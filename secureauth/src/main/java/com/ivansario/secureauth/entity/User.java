@@ -43,6 +43,7 @@ public class User {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        enabled = true;
     }
 
     @PreUpdate

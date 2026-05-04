@@ -2,6 +2,8 @@ package com.ivansario.secureauth.entity;
 
 import java.util.UUID;
 
+import com.ivansario.secureauth.util.RoleEnum;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -24,7 +26,7 @@ public class Role {
     private UUID id;
 
     @Column(nullable = false, unique = true, length = 100)
-    private String name;
+    private RoleEnum name;
 
     @Column(nullable = false, length = 255)
     private String description;
@@ -37,11 +39,11 @@ public class Role {
         this.id = id;
     }
 
-    public String getName() {
+    public RoleEnum getName() {
         return name;
     }
 
-    public void setName(String name) {
+    public void setName(RoleEnum name) {
         this.name = name;
     }
 
