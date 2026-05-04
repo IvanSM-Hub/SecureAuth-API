@@ -27,6 +27,4 @@ replay_pid*
 .vscode
 .idea/
 
-postgres/
-pgadmin/
-target/
+secureauth/target
