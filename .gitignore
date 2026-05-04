@@ -25,7 +25,8 @@ replay_pid*
 
 .env
 .vscode
-.idea/*
+.idea/
 
 postgres/
 pgadmin/
+target/
