@@ -1,3 +1,17 @@
 spring:
   application:
     name: secureauth
+  datasource:
+    url: jdbc:postgresql://db:5432/secure_auth
+    username: secureauth_admin
+    password: c2VjdXJlYXV0aF9wYXNzd29yZF9hZG1pbg==
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: false
+    open-in-view: false
