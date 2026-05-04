@@ -2,9 +2,9 @@ spring:
   application:
     name: secureauth
   datasource:
-    url: jdbc:postgresql://db:5432/secure_auth
-    username: secureauth_admin
-    password: c2VjdXJlYXV0aF9wYXNzd29yZF9hZG1pbg==
+    url: jdbc:postgresql://db:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
