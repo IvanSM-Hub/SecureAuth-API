@@ -1,6 +1,9 @@
 spring:
   application:
     name: secureauth
+  sql:
+    init:
+      mode: never
   datasource:
     url: jdbc:postgresql://db:${POSTGRES_PORT}/${POSTGRES_DB}
     username: ${POSTGRES_USER}
