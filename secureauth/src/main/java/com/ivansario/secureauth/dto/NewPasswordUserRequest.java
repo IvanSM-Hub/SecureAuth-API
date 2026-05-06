@@ -13,6 +13,8 @@ import lombok.Setter;
 @Builder
 public class NewPasswordUserRequest {
 
+    private String email;
+    private String username;
     private String newPassword;
     private String confirmPassword;
 

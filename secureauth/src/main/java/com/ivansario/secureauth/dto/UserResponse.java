@@ -18,4 +18,5 @@ public class UserResponse {
     private String username;
     private String email;
     private RoleEnum role;
+    private String token;
 }
