@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.UUID;
 
 import com.ivansario.secureauth.entity.Role;
+import com.ivansario.secureauth.util.RoleEnum;
 
 public interface RoleService {
 
     List<Role> findAll();
+    Role findByName(RoleEnum role);
     Role findById(UUID id);
     Role create(Role role);
     Role update(Role role);

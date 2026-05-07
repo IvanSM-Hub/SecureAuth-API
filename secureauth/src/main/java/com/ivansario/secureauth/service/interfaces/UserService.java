@@ -4,15 +4,17 @@ import java.util.UUID;
 
 import com.ivansario.secureauth.dto.CreateUserRequest;
 import com.ivansario.secureauth.dto.NewPasswordUserRequest;
-import com.ivansario.secureauth.dto.UpdateUserRequest;
-import com.ivansario.secureauth.dto.UserResponse;
+import com.ivansario.secureauth.entity.Role;
+import com.ivansario.secureauth.entity.User;
 
 public interface UserService {
 
-    UserResponse findUser();
-    UserResponse createUser(CreateUserRequest createUserRequest);
-    UserResponse changePassword(NewPasswordUserRequest newPassword);
-    UserResponse deleteUser(UUID id);
-    UserResponse updateUser(UpdateUserRequest updateUser);
+    User findUser(String userKey);
+    User createUser(CreateUserRequest createUserRequest, Role role);
+    User changePassword(NewPasswordUserRequest newPassword);
+    User deleteUser(UUID id);
+    User updateUser(User user);
+
+    boolean existsUser(String userKey);
 
 }

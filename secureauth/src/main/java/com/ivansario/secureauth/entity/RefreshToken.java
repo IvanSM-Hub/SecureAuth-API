@@ -54,6 +54,7 @@ public class RefreshToken {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         expiryDate = createdAt.plusDays(1);
+        revoked = false;
     }
 
     // Getters y Setters

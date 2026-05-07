@@ -2,10 +2,10 @@ package com.ivansario.secureauth.util;
 
 public enum RoleEnum {
 
-    ADMIN("admin"),
-    USER("user"),
-    MANAGER("manager"),
-    AUDITOR("auditor");
+    ADMIN("ROLE_ADMIN"),
+    USER("ROLE_USER"),
+    MANAGER("ROLE_MANAGER"),
+    AUDITOR("ROLE_AUDITOR");
 
     private final String displayName;
 

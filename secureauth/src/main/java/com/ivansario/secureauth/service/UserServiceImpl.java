@@ -1,26 +1,32 @@
 package com.ivansario.secureauth.service;
 
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.ivansario.secureauth.dto.CreateUserRequest;
 import com.ivansario.secureauth.dto.NewPasswordUserRequest;
-import com.ivansario.secureauth.dto.UpdateUserRequest;
-import com.ivansario.secureauth.dto.UserResponse;
+import com.ivansario.secureauth.entity.Role;
+import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.repository.UserRepository;
 import com.ivansario.secureauth.service.interfaces.UserService;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService, UserDetailsService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -32,28 +38,46 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public UserResponse createUser(CreateUserRequest createUserRequest) {
-        throw new UnsupportedOperationException("Unimplemented method 'createUser'");
+    public User createUser(CreateUserRequest createUserRequest, Role userRole) {
+
+        User user = User.builder()
+        .id(UUID.randomUUID())
+        .username(createUserRequest.getUsername())
+        .email(createUserRequest.getEmail())
+        .passwordHash(passwordEncoder.encode(createUserRequest.getPassword()))
+        .roles(Set.of(userRole))
+        .build();
+
+        return userRepository.save(user);
+
     }
 
     @Override
-    public UserResponse changePassword(NewPasswordUserRequest newPassword) {
+    public User changePassword(NewPasswordUserRequest newPassword) {
         throw new UnsupportedOperationException("Unimplemented method 'changePassword'");
     }
 
     @Override
-    public UserResponse deleteUser(UUID id) {
+    public User deleteUser(UUID id) {
         throw new UnsupportedOperationException("Unimplemented method 'deleteUser'");
     }
 
     @Override
-    public UserResponse updateUser(UpdateUserRequest updateUser) {
-        return null;
+    public User updateUser(User user) {
+        return userRepository.save(user);
     }
     
     @Override
-    public UserResponse findUser() {
-        return null;
+    public User findUser(String userKey) {
+        validateUserKey(userKey);
+
+        return (userKey.contains("@")
+                ? userRepository.findByEmail(userKey)
+                : userRepository.findByUsername(userKey))
+                .orElseThrow(() -> {
+                    log.error("Usuario no encontrado en la base de datos: {}", userKey);
+                    return new EntityNotFoundException("No se encontró el usuario: " + userKey);
+                });
     }
 
     @Override
@@ -74,6 +98,21 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     public String toString() {
         return super.toString();
+    }
+
+    @Override
+    public boolean existsUser(String userKey) {
+        validateUserKey(userKey);
+        return userKey.contains("@")
+        ? userRepository.existsByEmail(userKey)
+        : userRepository.existsByUsername(userKey);
+    }
+
+    private void validateUserKey(String userKey) {
+        if (userKey == null || userKey.isBlank()) {
+            log.warn("Se intentó buscar un usuario con una clave nula o vacía");
+            throw new IllegalArgumentException("La clave de búsqueda no puede estar vacía");
+        }
     }
 
 }

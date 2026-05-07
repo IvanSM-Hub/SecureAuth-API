@@ -11,6 +11,6 @@ import com.ivansario.secureauth.util.RoleEnum;
 
 @Repository
 public interface RoleRepository extends JpaRepository<Role, UUID> {
-    Optional<Role> findByName(RoleEnum name);
+    Optional<Role> findByName(String name);
     boolean existsByName(RoleEnum name);
 }

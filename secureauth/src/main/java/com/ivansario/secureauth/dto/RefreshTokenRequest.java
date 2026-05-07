@@ -11,10 +11,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CreateUserRequest {
-    private String email;
-    private String username;
-    private String name;
-    private String surname;
-    private String password;
+public class RefreshTokenRequest {
+
+    private String refreshToken;
+
 }
