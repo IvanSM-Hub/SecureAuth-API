@@ -31,7 +31,6 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     @Override
     public RefreshToken create(User user, String ipAddress, String userAgent) {
         RefreshToken rt = RefreshToken.builder()
-        .id(UUID.randomUUID())
         .user(user)
         .token(UUID.randomUUID().toString())
         .ipAdress(ipAddress)

@@ -2,8 +2,12 @@ package com.ivansario.secureauth.entity;
 
 import java.util.UUID;
 
+import com.ivansario.secureauth.util.PermissionEnum;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,8 +27,9 @@ public class Permission {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 100)
-    private String name;
+    private PermissionEnum name;
 
     @Column(nullable = true, length = 255)
     private String description;
@@ -37,11 +42,11 @@ public class Permission {
         this.id = id;
     }
 
-    public String getName() {
+    public PermissionEnum getName() {
         return name;
     }
 
-    public void setName(String name) {
+    public void setName(PermissionEnum name) {
         this.name = name;
     }
 

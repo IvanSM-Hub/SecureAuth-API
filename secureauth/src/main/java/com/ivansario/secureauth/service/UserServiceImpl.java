@@ -1,6 +1,5 @@
 package com.ivansario.secureauth.service;
 
-import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.security.core.userdetails.UserDetails;
@@ -38,14 +37,12 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public User createUser(CreateUserRequest createUserRequest, Role userRole) {
+    public User createUser(CreateUserRequest createUserRequest, Role role) {
 
         User user = User.builder()
-        .id(UUID.randomUUID())
         .username(createUserRequest.getUsername())
         .email(createUserRequest.getEmail())
         .passwordHash(passwordEncoder.encode(createUserRequest.getPassword()))
-        .roles(Set.of(userRole))
         .build();
 
         return userRepository.save(user);

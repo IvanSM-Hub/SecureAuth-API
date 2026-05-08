@@ -11,7 +11,7 @@ public interface UserSessionService {
 
     List<UserSession> findAll();
     UserSession findById(UUID id);
-    UserSession create(User user, RefreshToken rt, String ip, String ua);
+    UserSession create(User user, RefreshToken refreshToken, String ipAddress, String UserAgent);
     UserSession update(UserSession session);
     boolean delete(UUID id);
 

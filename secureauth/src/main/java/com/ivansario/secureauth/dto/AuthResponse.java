@@ -1,7 +1,5 @@
 package com.ivansario.secureauth.dto;
 
-import java.util.List;
-
 import com.ivansario.secureauth.util.RoleEnum;
 
 import lombok.AllArgsConstructor;
@@ -16,10 +14,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class AuthResponse {
-    private Long id;
     private String username;
     private String email;
-    private List<RoleEnum> role;
+    private RoleEnum role;
     private String accessToken;
     private String refreshToken;
 }

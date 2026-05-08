@@ -45,7 +45,7 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public Role findByName(RoleEnum role) {
-        return roleRepository.findByName(role.name()).orElse(null);
+        return roleRepository.findByName(role).orElse(null);
     }
 
 }

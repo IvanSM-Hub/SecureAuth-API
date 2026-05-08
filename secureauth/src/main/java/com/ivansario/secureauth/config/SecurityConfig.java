@@ -10,8 +10,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -26,6 +24,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
+    private final SecurityPassEncoderConfig passEncoderConfig;
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) {
@@ -35,8 +34,10 @@ public class SecurityConfig {
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         )
         .authorizeHttpRequests(
-            auth -> auth.requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated()
+            auth -> auth
+            .requestMatchers("/api/auth/register", "/api/auth/registerAdmin", "/api/auth/login").permitAll()
+            
+            .anyRequest().authenticated()
         )
         .authenticationProvider(authenticationProvider())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -46,12 +47,9 @@ public class SecurityConfig {
     @Bean
     AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
+        authProvider.setPasswordEncoder(passEncoderConfig.passwordEncoder());
         return authProvider;
     }
-
-    @Bean
-    PasswordEncoder passwordEncoder() {return new BCryptPasswordEncoder();}
     
     @Bean
     AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {

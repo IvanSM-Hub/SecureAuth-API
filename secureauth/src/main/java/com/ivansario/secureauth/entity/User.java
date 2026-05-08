@@ -55,9 +55,8 @@ public class User implements UserDetails {
     @Column(nullable = true)
     private LocalDateTime lastLogin;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles;
+    @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<UserRole> userRoles;
 
     @PrePersist
     protected void onCreate() {
@@ -152,12 +151,17 @@ public class User implements UserDetails {
         this.lastLogin = lastLogin;
     }
 
-    public Set<Role> getRoles() {
-        return roles;
+    public Set<UserRole> getUserRoles() {
+        return userRoles;
     }
 
-    public void setRoles(Set<Role> roles) {
-        this.roles = roles;
+    public void setUserRoles(Set<UserRole> userRoles) {
+        this.userRoles = userRoles;
+    }
+
+    public Set<Role> getRoles() {
+        if (userRoles == null) return Set.of();
+        return userRoles.stream().map(UserRole::getRole).collect(Collectors.toSet());
     }
 
     @Override

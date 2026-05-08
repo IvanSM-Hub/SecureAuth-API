@@ -2,28 +2,26 @@ package com.ivansario.secureauth.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
 
-import java.util.UUID;
 import java.time.LocalDateTime;
 
-@Builder
+import com.ivansario.secureauth.util.UserRoleId;
+
 @AllArgsConstructor
-@NoArgsConstructor
 @Entity
 @Table(name = "user_roles")
 public class UserRole {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @EmbeddedId
+    private UserRoleId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("userId")
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @MapsId("roleId")
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
@@ -32,15 +30,21 @@ public class UserRole {
 
     @PrePersist
     protected void onCreate() {
-        assignedAt = LocalDateTime.now();
+        if (assignedAt == null) {
+            assignedAt = LocalDateTime.now();
+        }
     }
 
+    public UserRole() {
+    }
+    
     // Getters y Setters
-    public UUID getId() {
+    
+    public UserRoleId getId() {
         return id;
     }
 
-    public void setId(UUID id) {
+    public void setId(UserRoleId id) {
         this.id = id;
     }
 
@@ -67,4 +71,5 @@ public class UserRole {
     public void setAssignedAt(LocalDateTime assignedAt) {
         this.assignedAt = assignedAt;
     }
+
 }

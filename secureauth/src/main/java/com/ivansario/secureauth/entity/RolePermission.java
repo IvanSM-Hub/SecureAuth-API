@@ -1,16 +1,13 @@
 package com.ivansario.secureauth.entity;
 
-import java.util.UUID;
+import com.ivansario.secureauth.util.RolePermissionId;
 
+import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
@@ -19,33 +16,21 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(
-	name = "role_permissions",
-	uniqueConstraints = {
-		@UniqueConstraint(name = "uk_role_permission", columnNames = { "role_id", "permission_id" })
-	}
-)
+@Table(name = "role_permissions")
 public class RolePermission {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	private UUID id;
+	@EmbeddedId
+	private RolePermissionId id;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "role_id", nullable = false)
-	private Role role;
+	@ManyToOne
+    @MapsId("roleId")
+    @JoinColumn(name = "role_id")
+    private Role role;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "permission_id", nullable = false)
-	private Permission permission;
-
-	public UUID getId() {
-		return id;
-	}
-
-	public void setId(UUID id) {
-		this.id = id;
-	}
+    @ManyToOne
+    @MapsId("permissionId")
+    @JoinColumn(name = "permission_id")
+    private Permission permission;
 
 	public Role getRole() {
 		return role;

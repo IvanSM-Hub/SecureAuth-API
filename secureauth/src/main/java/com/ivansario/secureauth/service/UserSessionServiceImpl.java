@@ -30,13 +30,12 @@ public class UserSessionServiceImpl implements UserSessionService {
     }
 
     @Override
-    public UserSession create(User user, RefreshToken rt, String ip, String ua) {
+    public UserSession create(User user, RefreshToken refreshToken, String ipAddress, String UserAgent) {
         UserSession us = UserSession.builder()
-        .id(UUID.randomUUID())
         .user(user)
-        .refreshToken(rt)
-        .ipAddress(ip)
-        .deviceInfo(ua)
+        .refreshToken(refreshToken)
+        .ipAddress(ipAddress)
+        .deviceInfo(UserAgent)
         .build();
         return userSessionRepository.save(us);
     }
