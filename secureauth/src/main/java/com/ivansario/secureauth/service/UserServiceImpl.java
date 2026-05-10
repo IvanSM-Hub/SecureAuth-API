@@ -41,6 +41,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         User user = User.builder()
         .username(createUserRequest.getUsername())
+        .name(createUserRequest.getName())
+        .surname(createUserRequest.getSurname())
         .email(createUserRequest.getEmail())
         .passwordHash(passwordEncoder.encode(createUserRequest.getPassword()))
         .build();
