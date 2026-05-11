@@ -10,8 +10,9 @@ public interface RefreshTokenService {
 
     List<RefreshToken> findAll();
     RefreshToken findById(UUID id);
+    RefreshToken findByToken(String token);
     RefreshToken create(User user, String ipAddress, String userAgent);
-    RefreshToken update(RefreshToken token);
+    RefreshToken update(RefreshToken oldRefreshToken);
     boolean delete(UUID id);
 
 }

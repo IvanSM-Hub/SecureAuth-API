@@ -123,4 +123,8 @@ public class RefreshToken {
         this.userAgent = userAgent;
     }
 
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(expiryDate);
+    }
+
 }

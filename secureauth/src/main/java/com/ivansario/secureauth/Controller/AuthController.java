@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import com.ivansario.secureauth.dto.AuthResponse;
 import com.ivansario.secureauth.dto.CreateUserRequest;
 import com.ivansario.secureauth.dto.LoginRequest;
-import com.ivansario.secureauth.dto.LogoutRequest;
+import com.ivansario.secureauth.dto.UserTokenRequest;
 import com.ivansario.secureauth.dto.RefreshTokenRequest;
 import com.ivansario.secureauth.service.interfaces.AuthService;
 import com.ivansario.secureauth.util.RoleEnum;
@@ -34,8 +34,7 @@ public class AuthController {
     ) {
         String ipAddress = request.getRemoteAddr();
         String userAgent = request.getHeader("User-Agent");
-        AuthResponse authresponse = authService.login(loginRequest, ipAddress, userAgent);
-        return ResponseEntity.ok(authresponse);
+        return ResponseEntity.ok(authService.login(loginRequest, ipAddress, userAgent));
     }
 
     @PostMapping("/register")
@@ -46,9 +45,7 @@ public class AuthController {
     ) {
         String ipAddress = request.getRemoteAddr();
         String userAgent = request.getHeader("User-Agent");
-        return ResponseEntity.ok(
-            authService.register(
-                requestCreateUser, 
+        return ResponseEntity.ok(authService.register(requestCreateUser, 
                 ipAddress, 
                 userAgent, 
                 RoleEnum.ROLE_USER
@@ -75,7 +72,7 @@ public class AuthController {
     }
     
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestBody LogoutRequest request) {
+    public ResponseEntity<Void> logout(@RequestBody UserTokenRequest request) {
         authService.logout(request.getRefreshToken());
         return ResponseEntity.noContent().build();
     }

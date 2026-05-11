@@ -5,6 +5,9 @@ import java.util.Set;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import com.ivansario.secureauth.dto.AuthResponse;
@@ -16,6 +19,12 @@ import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.entity.UserRole;
 import com.ivansario.secureauth.entity.UserSession;
+import com.ivansario.secureauth.exception.InvalidCredentialsException;
+import com.ivansario.secureauth.exception.InvalidRefreshTokenException;
+import com.ivansario.secureauth.exception.RefreshTokenExpiredException;
+import com.ivansario.secureauth.exception.SessionCreationException;
+import com.ivansario.secureauth.exception.TokenGenerationException;
+import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.security.JwtUtil;
 import com.ivansario.secureauth.service.interfaces.AuthService;
 import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
@@ -46,31 +55,55 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress, String userAgent) {
         
-        String userKey = request.getUsername();
-        String password = request.getPassword();
+        Authentication authentication;
+        try {
+            authentication = authManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+            );
+        } catch (AuthenticationException e) {
+            log.warn("Intento de login fallido para usuario: {}", request.getUsername());
+            throw new InvalidCredentialsException("Credenciales inválidas");
+        }
 
-        authManager.authenticate(
-            new UsernamePasswordAuthenticationToken(userKey, password)
-        );
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        User user = userService.findUser(userDetails.getUsername());
+        
+        if (user == null) {
+            log.error("Usuario no encontrado después de autenticación: {}", userDetails.getUsername());
+            throw new UserNotFoundException("Usuario no encontrado: " + userDetails.getUsername());
+        }
 
-        User user;
-        user = userService.findUser(userKey);
-
-        String accessToken = jwtUtil.generateToken(userService.loadUserByUsername(user.getUsername()));
+        String accessToken;
+        try {
+            accessToken = jwtUtil.generateToken(userDetails);
+        } catch (Exception e) {
+            log.error("Error generando access token para usuario: {}", user.getUsername(), e);
+            throw new TokenGenerationException("No se pudo generar access token", e);
+        }
 
         RefreshToken refreshToken = refreshTokenService.create(user, ipAddress, userAgent);
+        if (refreshToken == null) {
+            log.error("Fallo creando refresh token para usuario: {}", user.getUsername());
+            throw new TokenGenerationException("No se pudo generar refresh token");
+        }
 
-        userSessionService.create(user, refreshToken, ipAddress, userAgent);
+        UserSession userSession = userSessionService.create(user, refreshToken, ipAddress, userAgent);
+        if (userSession == null) {
+            log.error("Fallo creando sesión para usuario: {}", user.getUsername());
+            throw new SessionCreationException("No se pudo crear sesión de usuario");
+        }
 
         user.setLastLogin(LocalDateTime.now());
         userService.updateUser(user);
 
+        log.info("Usuario {} inició sesión exitosamente. IP: {}", user.getUsername(), ipAddress);
+
         return AuthResponse.builder()
-        .username(user.getUsername())
-        .email(user.getEmail())
-        .accessToken(accessToken)
-        .refreshToken(refreshToken.getToken())
-        .build();
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .accessToken(accessToken)
+            .refreshToken(refreshToken.getToken())
+            .build();
     }
 
     @Override
@@ -79,8 +112,62 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public AuthResponse refreshToken(RefreshTokenRequest refreshTockenRequest, String ipAddress, String userAgent) {
-        return null;
+    @Transactional
+    public AuthResponse refreshToken(RefreshTokenRequest refreshTokenRequest, String ipAddress, String userAgent) {
+        RefreshToken oldRefreshToken = refreshTokenService.findByToken(refreshTokenRequest.getRefreshToken());
+        validateRefreshToken(oldRefreshToken);
+
+        User user = oldRefreshToken.getUser();
+        UserDetails userDetails = userService.loadUserByUsername(user.getUsername());
+
+        RefreshToken updatedRefreshToken = refreshTokenService.update(oldRefreshToken);
+        if (!updatedRefreshToken.isRevoked()) {
+            log.error("El intento de revocación del token salió mal");
+            throw new RefreshTokenExpiredException("El intento de revocación del token salió mal");
+        }
+        
+        String newToken = jwtUtil.generateToken(userDetails);
+
+        RefreshToken newRefreshToken = refreshTokenService.create(
+            user, 
+            ipAddress, 
+            userAgent
+        );
+        validateCreatedEntity(newRefreshToken, "New Refresh token");
+
+        UserSession userSession = userSessionService.create(
+            user, 
+            newRefreshToken, 
+            ipAddress, 
+            userAgent
+        );
+        validateCreatedEntity(userSession, "Sesión de usuario");
+
+        log.info("RefreshToken ejecutado para usuario: {}. IP: {}", user.getUsername(), ipAddress);
+
+
+        return AuthResponse.builder()
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .role(user.getRoles())
+            .accessToken(newToken)
+            .refreshToken(newRefreshToken.getToken())
+            .build();
+    }
+
+    private void validateRefreshToken(RefreshToken refreshToken) {
+        if (refreshToken == null) {
+            log.error("Refresh token no válido");
+            throw new InvalidRefreshTokenException("Refresh token no válido");
+        }
+        if (refreshToken.isExpired()) {
+            log.error("Refresh token expirado");
+            throw new RefreshTokenExpiredException("Refresh token expirado");
+        }
+        if (!refreshToken.getUser().getEnabled()) {
+            log.error("Refresh token no válido");
+            throw new UserNotFoundException("Usuario inactivo");
+        }
     }
 
     @Override
@@ -107,7 +194,6 @@ public class AuthServiceImpl implements AuthService {
         UserRole userRole = userRoleService.create(user, role);
         validateCreatedEntity(userRole, "Rol de usuario");
 
-        // Keep role authorities available in-memory for JWT generation.
         user.setUserRoles(Set.of(userRole));
         String accessToken = jwtUtil.generateToken(user);
 
@@ -118,12 +204,12 @@ public class AuthServiceImpl implements AuthService {
         validateCreatedEntity(userSession, "Sesión de usuario");
         
         return AuthResponse.builder()
-        .accessToken(accessToken)
-        .email(user.getEmail())
-        .username(user.getUsername())
-        .refreshToken(refreshToken.getToken())
-        .role(roleType)
-        .build();
+            .accessToken(accessToken)
+            .email(user.getEmail())
+            .username(user.getUsername())
+            .refreshToken(refreshToken.getToken())
+            .role(user.getRoles())
+            .build();
     }
 
     private void validateCreatedEntity(Object entity, String entityName) {

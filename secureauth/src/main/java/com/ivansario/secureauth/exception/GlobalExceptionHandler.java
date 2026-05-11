@@ -17,9 +17,49 @@ import jakarta.persistence.EntityNotFoundException;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends Exception {
 
+	@ExceptionHandler(UserNotFoundException.class)
+	public ResponseEntity<Map<String, Object>> handleUserNotFound(UserNotFoundException ex) {
+		return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
 	@ExceptionHandler(EntityNotFoundException.class)
 	public ResponseEntity<Map<String, Object>> handleEntityNotFound(EntityNotFoundException ex) {
 		return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
+	@ExceptionHandler(InvalidCredentialsException.class)
+	public ResponseEntity<Map<String, Object>> handleInvalidCredentials(InvalidCredentialsException ex) {
+		return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+	}
+
+	@ExceptionHandler(TokenGenerationException.class)
+	public ResponseEntity<Map<String, Object>> handleTokenGeneration(TokenGenerationException ex) {
+		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+	}
+
+	@ExceptionHandler(SessionCreationException.class)
+	public ResponseEntity<Map<String, Object>> handleSessionCreation(SessionCreationException ex) {
+		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+	}
+
+	@ExceptionHandler(InvalidRefreshTokenException.class)
+	public ResponseEntity<Map<String, Object>> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+		return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+	}
+
+	@ExceptionHandler(RefreshTokenExpiredException.class)
+	public ResponseEntity<Map<String, Object>> handleRefreshTokenExpired(RefreshTokenExpiredException ex) {
+		return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+	}
+
+	@ExceptionHandler(RefreshTokenRevokedException.class)
+	public ResponseEntity<Map<String, Object>> handleRefreshTokenRevoked(RefreshTokenRevokedException ex) {
+		return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+	}
+
+	@ExceptionHandler(RefreshTokenRotationException.class)
+	public ResponseEntity<Map<String, Object>> handleRefreshTokenRotation(RefreshTokenRotationException ex) {
+		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)

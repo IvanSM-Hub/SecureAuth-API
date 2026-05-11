@@ -25,7 +25,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     @Override
     public RefreshToken findById(UUID id) {
-        throw new UnsupportedOperationException("Not implemented");
+        return refreshTokenRepository.getReferenceById(id);
     }
 
     @Override
@@ -40,13 +40,19 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     @Override
-    public RefreshToken update(RefreshToken token) {
-        throw new UnsupportedOperationException("Not implemented");
+    public RefreshToken update(RefreshToken oldRefreshToken) {
+        oldRefreshToken.setRevoked(true);
+        return refreshTokenRepository.save(oldRefreshToken);
     }
 
     @Override
     public boolean delete(UUID id) {
         throw new UnsupportedOperationException("Not implemented");
+    }
+
+    @Override
+    public RefreshToken findByToken(String token) {
+        return refreshTokenRepository.findByToken(token).orElse(null);
     }
 
 }
