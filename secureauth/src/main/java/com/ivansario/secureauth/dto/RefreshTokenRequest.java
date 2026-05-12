@@ -13,6 +13,6 @@ import lombok.Setter;
 @Builder
 public class RefreshTokenRequest {
 
-    private String refreshToken;
+    private String token;
 
 }

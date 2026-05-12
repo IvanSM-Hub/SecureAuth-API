@@ -18,6 +18,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Filtro de petición que valida el JWT en las solicitudes entrantes.
+ *
+ * Ignora los endpoints de autenticación públicos y, para las demás rutas,
+ * extrae el token Bearer de la cabecera Authorization y establece la
+ * autenticación en el contexto de seguridad si el token es válido.
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -25,12 +32,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserServiceImpl userService;
 
+    /**
+     * Manejo principal del filtro:
+     * - Omite rutas públicas (/api/auth/)
+     * - Extrae y valida el token Bearer
+     * - Establece la autenticación en SecurityContext si el token es válido
+     */
     @Override
     protected void doFilterInternal(
         HttpServletRequest request,
         HttpServletResponse response,
         FilterChain filterChain
     ) throws ServletException, IOException {
+
 
         String requestPath = request.getRequestURI();
         if (requestPath.startsWith("/api/auth/")) {

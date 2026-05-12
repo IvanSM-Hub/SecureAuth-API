@@ -17,4 +17,5 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
     Optional<UserSession> findByRefreshToken(RefreshToken refreshToken);
     List<UserSession> findAllByRevoked(boolean revoked);
     void deleteAllByUser(User user);
+    Optional<UserSession> findByUser(User user);
 }

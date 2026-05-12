@@ -1,5 +1,6 @@
 package com.ivansario.secureauth.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,6 +14,11 @@ import com.ivansario.secureauth.service.interfaces.UserSessionService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Servicio para gestión de sesiones de usuario.
+ *
+ * Permite crear, actualizar, buscar y revocar sesiones asociadas a usuarios.
+ */
 @Service
 @RequiredArgsConstructor
 public class UserSessionServiceImpl implements UserSessionService {
@@ -36,18 +42,43 @@ public class UserSessionServiceImpl implements UserSessionService {
         .refreshToken(refreshToken)
         .ipAddress(ipAddress)
         .deviceInfo(UserAgent)
+        .revoked(false)
         .build();
         return userSessionRepository.save(us);
     }
 
+    /**
+     * Actualiza la sesión en persistencia.
+     *
+     * @param session sesión a actualizar
+     * @return sesión actualizada
+     */
     @Override
     public UserSession update(UserSession session) {
-        throw new UnsupportedOperationException("Not implemented");
+        return userSessionRepository.save(session);
     }
 
     @Override
-    public boolean delete(UUID id) {
-        throw new UnsupportedOperationException("Not implemented");
+    public UserSession findByUser(User user) {
+        return userSessionRepository.findByUser(user).orElse(null);
+    }
+
+    /**
+     * Revoca la última sesión activa del usuario (si existe).
+     *
+     * @param user usuario cuya sesión será revocada
+     * @return {@code true} si la sesión fue revocada, {@code false} si no había sesión
+     */
+    @Override
+    public boolean revokeLastSession(User user) {
+        UserSession session = findByUser(user);
+        
+        if (session == null || session.isRevoked()) return false;
+
+        session.setRevoked(true);
+        session.setLastActivity(LocalDateTime.now());
+        userSessionRepository.save(session);
+        return true;
     }
 
 }

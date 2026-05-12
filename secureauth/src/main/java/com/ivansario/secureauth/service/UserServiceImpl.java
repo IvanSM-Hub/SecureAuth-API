@@ -1,7 +1,5 @@
 package com.ivansario.secureauth.service;
 
-import java.util.UUID;
-
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -9,7 +7,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.ivansario.secureauth.dto.CreateUserRequest;
-import com.ivansario.secureauth.dto.NewPasswordUserRequest;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.repository.UserRepository;
@@ -52,16 +49,6 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public User changePassword(NewPasswordUserRequest newPassword) {
-        throw new UnsupportedOperationException("Unimplemented method 'changePassword'");
-    }
-
-    @Override
-    public User deleteUser(UUID id) {
-        throw new UnsupportedOperationException("Unimplemented method 'deleteUser'");
-    }
-
-    @Override
     public User updateUser(User user) {
         return userRepository.save(user);
     }
@@ -77,26 +64,6 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                     log.error("Usuario no encontrado en la base de datos: {}", userKey);
                     return new EntityNotFoundException("No se encontró el usuario: " + userKey);
                 });
-    }
-
-    @Override
-    protected Object clone() throws CloneNotSupportedException {
-        return super.clone();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return super.equals(obj);
-    }
-
-    @Override
-    public int hashCode() {
-        return super.hashCode();
-    }
-
-    @Override
-    public String toString() {
-        return super.toString();
     }
 
     @Override

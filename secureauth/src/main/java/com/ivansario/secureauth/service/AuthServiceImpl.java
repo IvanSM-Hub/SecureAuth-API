@@ -2,6 +2,7 @@ package com.ivansario.secureauth.service;
 
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -14,6 +15,7 @@ import com.ivansario.secureauth.dto.AuthResponse;
 import com.ivansario.secureauth.dto.CreateUserRequest;
 import com.ivansario.secureauth.dto.LoginRequest;
 import com.ivansario.secureauth.dto.RefreshTokenRequest;
+import com.ivansario.secureauth.dto.RegisterResponse;
 import com.ivansario.secureauth.entity.RefreshToken;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
@@ -40,34 +42,42 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Slf4j
 @RequiredArgsConstructor
+/**
+ * Implementación del servicio de autenticación.
+ *
+ * Proporciona operaciones de login, logout, refresh token y registro de
+ * usuarios.
+ */
 public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authManager;
     private final JwtUtil jwtUtil;
-    
+
     private final UserServiceImpl userService;
     private final RefreshTokenService refreshTokenService;
     private final UserSessionService userSessionService;
     private final RoleService roleService;
     private final UserRoleService userRoleService;
 
+    /**
+     * Autentica al usuario y genera access y refresh tokens, además de
+     * crear/actualizar
+     * la sesión del usuario.
+     *
+     * @param request   datos de login (username, password)
+     * @param ipAddress dirección IP del cliente
+     * @param userAgent información del cliente (User-Agent)
+     * @return {@link AuthResponse} con tokens y datos del usuario
+     */
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress, String userAgent) {
-        
-        Authentication authentication;
-        try {
-            authentication = authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-            );
-        } catch (AuthenticationException e) {
-            log.warn("Intento de login fallido para usuario: {}", request.getUsername());
-            throw new InvalidCredentialsException("Credenciales inválidas");
-        }
+
+        Authentication authentication = authenticate(request.getUsername(), request.getPassword());
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         User user = userService.findUser(userDetails.getUsername());
-        
+
         if (user == null) {
             log.error("Usuario no encontrado después de autenticación: {}", userDetails.getUsername());
             throw new UserNotFoundException("Usuario no encontrado: " + userDetails.getUsername());
@@ -81,16 +91,23 @@ public class AuthServiceImpl implements AuthService {
             throw new TokenGenerationException("No se pudo generar access token", e);
         }
 
-        RefreshToken refreshToken = refreshTokenService.create(user, ipAddress, userAgent);
-        if (refreshToken == null) {
-            log.error("Fallo creando refresh token para usuario: {}", user.getUsername());
-            throw new TokenGenerationException("No se pudo generar refresh token");
+        RefreshToken refreshedToken;
+        if (refreshTokenService.existsRefreshTokenByUser(user)) {
+            refreshedToken = refreshTokenService.updateToken(refreshTokenService.findByUser(user), ipAddress,
+                    userAgent);
+        } else {
+            refreshedToken = refreshTokenService.create(user, ipAddress, userAgent);
         }
 
-        UserSession userSession = userSessionService.create(user, refreshToken, ipAddress, userAgent);
+        UserSession userSession = userSessionService.findByUser(user);
         if (userSession == null) {
-            log.error("Fallo creando sesión para usuario: {}", user.getUsername());
-            throw new SessionCreationException("No se pudo crear sesión de usuario");
+            userSessionService.create(user, refreshedToken, ipAddress, userAgent);
+        } else {
+            userSession.setRefreshToken(refreshedToken);
+            userSession.setIpAddress(ipAddress);
+            userSession.setDeviceInfo(userAgent);
+            userSession.setRevoked(false);
+            userSessionService.update(userSession);
         }
 
         user.setLastLogin(LocalDateTime.now());
@@ -99,62 +116,161 @@ public class AuthServiceImpl implements AuthService {
         log.info("Usuario {} inició sesión exitosamente. IP: {}", user.getUsername(), ipAddress);
 
         return AuthResponse.builder()
-            .username(user.getUsername())
-            .email(user.getEmail())
-            .accessToken(accessToken)
-            .refreshToken(refreshToken.getToken())
-            .build();
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(toRoleNames(user))
+                .accessToken(accessToken)
+                .refreshToken(refreshedToken.getToken())
+                .build();
     }
 
+    /**
+     * Cierra la sesión asociada al refresh token proporcionado y revoca el token.
+     *
+     * @param logoutRefreshToken petición que contiene el refresh token a revocar
+     */
     @Override
-    public void logout(String refreshToken) {
-        
+    @Transactional
+    public void logout(RefreshTokenRequest logoutRefreshToken) {
+        RefreshToken foundRefreshToken = refreshTokenService.findByToken(logoutRefreshToken.getToken());
+        validateRefreshToken(foundRefreshToken);
+
+        User user = foundRefreshToken.getUser();
+
+        // Revocar refresh token
+        refreshTokenService.revokeToken(foundRefreshToken);
+
+        // Revocar sesión del usuario
+        userSessionService.revokeLastSession(user);
+
+        log.info("Usuario {} se ha desconectado exitosamente", user.getUsername());
     }
 
+    /**
+     * Renueva los tokens (access y refresh) utilizando un refresh token válido.
+     *
+     * @param refreshTokenRequest petición que contiene el refresh token actual
+     * @param ipAddress           dirección IP del cliente
+     * @param userAgent           información del cliente (User-Agent)
+     * @return {@link AuthResponse} con los nuevos tokens
+     */
     @Override
     @Transactional
     public AuthResponse refreshToken(RefreshTokenRequest refreshTokenRequest, String ipAddress, String userAgent) {
-        RefreshToken oldRefreshToken = refreshTokenService.findByToken(refreshTokenRequest.getRefreshToken());
+        RefreshToken oldRefreshToken = refreshTokenService.findByToken(refreshTokenRequest.getToken());
         validateRefreshToken(oldRefreshToken);
+        if (oldRefreshToken.isRevoked()) {
+            log.error("Token del usuario ha sido revocada: {}", oldRefreshToken.getUser().getUsername());
+            throw new SessionCreationException("El token del usuario ha sido revocada");
+        }
 
         User user = oldRefreshToken.getUser();
-        UserDetails userDetails = userService.loadUserByUsername(user.getUsername());
 
-        RefreshToken updatedRefreshToken = refreshTokenService.update(oldRefreshToken);
-        if (!updatedRefreshToken.isRevoked()) {
-            log.error("El intento de revocación del token salió mal");
-            throw new RefreshTokenExpiredException("El intento de revocación del token salió mal");
+        UserSession userSession = userSessionService.findByUser(user);
+        if (userSession == null || userSession.isRevoked()) {
+            log.error("La sesión del usuario fue revocada: {}", user.getUsername());
+            throw new SessionCreationException("La sesión del usuario fue revocada");
         }
-        
-        String newToken = jwtUtil.generateToken(userDetails);
+        UserDetails userDetails = resolveUserDetails(user);
 
-        RefreshToken newRefreshToken = refreshTokenService.create(
-            user, 
-            ipAddress, 
-            userAgent
-        );
-        validateCreatedEntity(newRefreshToken, "New Refresh token");
+        RefreshToken refreshedToken = refreshTokenService.updateToken(oldRefreshToken, ipAddress, userAgent);
+        validateCreatedEntity(refreshedToken, "Revoked old refresh token");
 
-        UserSession userSession = userSessionService.create(
-            user, 
-            newRefreshToken, 
-            ipAddress, 
-            userAgent
-        );
-        validateCreatedEntity(userSession, "Sesión de usuario");
+        userSession.setRefreshToken(refreshedToken);
+        userSession.setIpAddress(ipAddress);
+        userSession.setDeviceInfo(userAgent);
+        userSessionService.update(userSession);
+
+        String newAccessToken = jwtUtil.generateToken(userDetails);
 
         log.info("RefreshToken ejecutado para usuario: {}. IP: {}", user.getUsername(), ipAddress);
 
-
         return AuthResponse.builder()
-            .username(user.getUsername())
-            .email(user.getEmail())
-            .role(user.getRoles())
-            .accessToken(newToken)
-            .refreshToken(newRefreshToken.getToken())
-            .build();
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(toRoleNames(user))
+                .accessToken(newAccessToken)
+                .refreshToken(refreshedToken.getToken())
+                .build();
     }
 
+    /**
+     * Registra un nuevo usuario con el rol especificado.
+     *
+     * @param request   datos para crear el usuario
+     * @param ipAddress dirección IP del cliente
+     * @param userAgent información del cliente (User-Agent)
+     * @param roleType  rol a asignar al usuario
+     * @return {@link RegisterResponse} con información del usuario creado
+     */
+    @Override
+    @Transactional
+    public RegisterResponse register(
+            CreateUserRequest request,
+            String ipAddress,
+            String userAgent,
+            RoleEnum roleType) {
+
+        if (userService.existsUser(request.getEmail())) {
+            throw new RuntimeException("Email ya registrado");
+        }
+
+        Role role = roleService.findByName(roleType);
+        if (role == null) {
+            log.error("Error: Rol no encontrado: " + roleType);
+            throw new RuntimeException("Error: Rol no encontrado: " + roleType);
+        }
+
+        User user = userService.createUser(request, role);
+        validateCreatedEntity(user, "Usuario");
+
+        UserRole userRole = userRoleService.create(user, role);
+        validateCreatedEntity(userRole, "Rol de usuario");
+
+        user.setUserRoles(Set.of(userRole));
+
+        log.info("Usuario {} registrado exitosamente. Debe hacer login para obtener acceso.", user.getUsername());
+
+        return RegisterResponse.builder()
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(toRoleNames(user))
+                .build();
+    }
+
+    /**
+     * Realiza la autenticación usando el {@code AuthenticationManager}.
+     */
+    private Authentication authenticate(String username, String password) {
+        try {
+            return authManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(username, password));
+        } catch (AuthenticationException e) {
+            try {
+                User user = userService.findUser(username);
+                return authManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(user.getEmail(), password));
+            } catch (Exception fallbackException) {
+                log.warn("Intento de login fallido para usuario: {}", username);
+                throw new InvalidCredentialsException("Credenciales inválidas");
+            }
+        }
+    }
+
+    /**
+     * Valida que una entidad creada no sea nula; lanza RuntimeException en caso
+     * contrario.
+     */
+    private void validateCreatedEntity(Object entity, String entityName) {
+        if (entity == null) {
+            log.error("Error: {} no creado", entityName);
+            throw new RuntimeException("Error: " + entityName + " no creado");
+        }
+    }
+
+    /**
+     * Valida la existencia y estado del refresh token.
+     */
     private void validateRefreshToken(RefreshToken refreshToken) {
         if (refreshToken == null) {
             log.error("Refresh token no válido");
@@ -170,53 +286,32 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    @Override
-    @Transactional
-    public AuthResponse register(
-        CreateUserRequest request, 
-        String ipAddress, 
-        String userAgent, 
-        RoleEnum roleType
-    ) {
-        if (userService.existsUser(request.getEmail())) {
-            throw new RuntimeException("Email ya registrado");
-        }
-        
-        Role role = roleService.findByName(roleType);
-        if (role == null) {
-            log.error("Error: Rol no encontrado: " + roleType);
-            throw new RuntimeException("Error: Rol no encontrado: " + roleType);
-        }
+    /**
+     * Resuelve los detalles de usuario necesarios para generar tokens.
+     */
+    private UserDetails resolveUserDetails(User user) {
+        try {
+            return (UserDetails) userService.loadUserByUsername(user.getEmail());
+        } catch (Exception emailException) {
+            log.warn("No se pudo cargar el usuario por email {}, intentando por username {}", user.getEmail(),
+                    user.getUsername());
 
-        User user = userService.createUser(request, role);
-        validateCreatedEntity(user, "Usuario");
-
-        UserRole userRole = userRoleService.create(user, role);
-        validateCreatedEntity(userRole, "Rol de usuario");
-
-        user.setUserRoles(Set.of(userRole));
-        String accessToken = jwtUtil.generateToken(user);
-
-        RefreshToken refreshToken = refreshTokenService.create(user, ipAddress, userAgent);
-        validateCreatedEntity(refreshToken, "Refresh token");
-        
-        UserSession userSession = userSessionService.create(user, refreshToken, ipAddress, userAgent);
-        validateCreatedEntity(userSession, "Sesión de usuario");
-        
-        return AuthResponse.builder()
-            .accessToken(accessToken)
-            .email(user.getEmail())
-            .username(user.getUsername())
-            .refreshToken(refreshToken.getToken())
-            .role(user.getRoles())
-            .build();
-    }
-
-    private void validateCreatedEntity(Object entity, String entityName) {
-        if (entity == null) {
-            log.error("Error: {} no creado", entityName);
-            throw new RuntimeException("Error: " + entityName + " no creado");
+            try {
+                return (UserDetails) userService.findUser(user.getUsername());
+            } catch (Exception usernameException) {
+                log.error("Usuario no encontrado por email ni username: email={}, username={}", user.getEmail(),
+                        user.getUsername());
+                throw new UserNotFoundException("Usuario no encontrado: " + user.getUsername());
+            }
         }
     }
 
+    /**
+     * Convierte el conjunto de roles de la entidad {@code User} a nombres de rol.
+     */
+    private Set<String> toRoleNames(User user) {
+        return user.getRoles().stream()
+                .map(role -> role.getName().name())
+                .collect(Collectors.toSet());
+    }
 }
