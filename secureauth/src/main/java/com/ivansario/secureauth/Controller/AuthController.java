@@ -72,31 +72,6 @@ public class AuthController {
             )
         );
     }
-
-    /**
-     * Endpoint POST /registerAdmin - registra un nuevo administrador (rol ADMIN).
-     *
-     * @param requestAdminCreate datos para crear el administrador
-     * @param request HTTP servlet request (se usa para IP y User-Agent)
-     * @return ResponseEntity con {@link RegisterResponse} con información del nuevo administrador
-     */
-    @PostMapping("/registerAdmin")
-    public ResponseEntity<RegisterResponse> registerAdmin(
-        @Valid @RequestBody 
-        CreateUserRequest requestAdminCreate,
-        HttpServletRequest request
-    ) {
-        String ipAddress = request.getRemoteAddr();
-        String userAgent = request.getHeader("User-Agent");
-        return ResponseEntity.ok(
-            authService.register(
-                requestAdminCreate, 
-                ipAddress, 
-                userAgent, 
-                RoleEnum.ROLE_ADMIN
-            )
-        );
-    }
     
     /**
      * Endpoint POST /logout - invalida un refresh token y revoca la sesión.
