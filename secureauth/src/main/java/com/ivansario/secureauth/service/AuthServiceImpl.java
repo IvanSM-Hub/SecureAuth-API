@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import com.ivansario.secureauth.dto.AuthResponse;
 import com.ivansario.secureauth.dto.CreateUserRequest;
 import com.ivansario.secureauth.dto.LoginRequest;
+import com.ivansario.secureauth.dto.NewPasswordUserRequest;
 import com.ivansario.secureauth.dto.RefreshTokenRequest;
 import com.ivansario.secureauth.dto.RegisterResponse;
 import com.ivansario.secureauth.entity.RefreshToken;
@@ -236,6 +237,12 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .role(toRoleNames(user))
                 .build();
+    }
+
+    @Override
+    public AuthResponse changePassword(NewPasswordUserRequest request, String ipAddress, String userAgent) {
+        
+        return null;
     }
 
     /**
