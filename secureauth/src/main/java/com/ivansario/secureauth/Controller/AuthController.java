@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import com.ivansario.secureauth.dto.AuthResponse;
 import com.ivansario.secureauth.dto.CreateUserRequest;
 import com.ivansario.secureauth.dto.LoginRequest;
+import com.ivansario.secureauth.dto.NewPasswordUserRequest;
 import com.ivansario.secureauth.dto.RefreshTokenRequest;
 import com.ivansario.secureauth.dto.RegisterResponse;
 import com.ivansario.secureauth.service.interfaces.AuthService;
@@ -101,6 +102,17 @@ public class AuthController {
         String ipAddress = request.getRemoteAddr();
         String userAgent = request.getHeader("User-Agent");
         return ResponseEntity.ok(authService.refreshToken(refreshTokenRequest, ipAddress, userAgent));
+    }
+
+    @PostMapping("/newPassword")
+    public ResponseEntity<AuthResponse> changePassword(
+        @Valid @RequestBody
+        NewPasswordUserRequest newPasswordUser,
+        HttpServletRequest request
+    ) {
+        String ipAddress = request.getRemoteAddr();
+        String userAgent = request.getHeader("User-Agent");
+        return ResponseEntity.ok(authService.changePassword(newPasswordUser, ipAddress, userAgent));
     }
 
 }
