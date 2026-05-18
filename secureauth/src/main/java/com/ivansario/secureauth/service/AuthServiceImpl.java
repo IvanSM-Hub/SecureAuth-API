@@ -22,6 +22,7 @@ import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.entity.UserRole;
 import com.ivansario.secureauth.entity.UserSession;
+import com.ivansario.secureauth.exception.InvalidConfirmationPasswordException;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
 import com.ivansario.secureauth.exception.InvalidRefreshTokenException;
 import com.ivansario.secureauth.exception.RefreshTokenExpiredException;
@@ -92,24 +93,7 @@ public class AuthServiceImpl implements AuthService {
             throw new TokenGenerationException("No se pudo generar access token", e);
         }
 
-        RefreshToken refreshedToken;
-        if (refreshTokenService.existsRefreshTokenByUser(user)) {
-            refreshedToken = refreshTokenService.updateToken(refreshTokenService.findByUser(user), ipAddress,
-                    userAgent);
-        } else {
-            refreshedToken = refreshTokenService.create(user, ipAddress, userAgent);
-        }
-
-        UserSession userSession = userSessionService.findByUser(user);
-        if (userSession == null) {
-            userSessionService.create(user, refreshedToken, ipAddress, userAgent);
-        } else {
-            userSession.setRefreshToken(refreshedToken);
-            userSession.setIpAddress(ipAddress);
-            userSession.setDeviceInfo(userAgent);
-            userSession.setRevoked(false);
-            userSessionService.update(userSession);
-        }
+        RefreshToken refreshedToken = createOrUpdateRefreshTokenAndSession(user, ipAddress, userAgent);
 
         user.setLastLogin(LocalDateTime.now());
         userService.updateUser(user);
@@ -240,9 +224,48 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public AuthResponse changePassword(NewPasswordUserRequest request, String ipAddress, String userAgent) {
-        
-        return null;
+
+        String pass1 = request.getNewPassword();
+        String pass2 = request.getConfirmPassword();
+
+        if (!pass1.equals(pass2)) { 
+            log.error("Las contraseñas proporcionadas no son válidas");
+            throw new InvalidConfirmationPasswordException("Las contraseñas proporcionadas no son válidas");
+        }
+
+        String token = request.getToken();
+
+        RefreshToken refreshToken = refreshTokenService.findByToken(token);
+        if (refreshToken == null || refreshToken.isExpired()) {
+            log.error("Refresh token expirado");
+            throw new RefreshTokenExpiredException("Refresh token expirado");
+        }
+
+        User userNewPassword = userService.changePassword(refreshToken.getUser(), pass1);
+
+        Authentication authentication = authenticate(userNewPassword.getUsername(), userNewPassword.getPassword());
+
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+
+        String accessToken;
+        try {
+            accessToken = jwtUtil.generateToken(userDetails);
+        } catch (Exception e) {
+            log.error("Error generando access token para usuario: {}", userNewPassword.getUsername(), e);
+            throw new TokenGenerationException("No se pudo generar access token", e);
+        }
+
+        RefreshToken refreshedToken = createOrUpdateRefreshTokenAndSession(userNewPassword, ipAddress, userAgent);
+
+        return AuthResponse.builder()
+                .username(userNewPassword.getUsername())
+                .email(userNewPassword.getEmail())
+                .role(toRoleNames(userNewPassword))
+                .accessToken(accessToken)
+                .refreshToken(refreshedToken.getToken())
+                .build();
     }
 
     /**
@@ -290,6 +313,37 @@ public class AuthServiceImpl implements AuthService {
         if (!refreshToken.getUser().getEnabled()) {
             log.error("Refresh token no válido");
             throw new UserNotFoundException("Usuario inactivo");
+        }
+    }
+
+    /**
+     * Crea o actualiza el refresh token y sincroniza la sesión del usuario.
+     */
+    private RefreshToken createOrUpdateRefreshTokenAndSession(User user, String ipAddress, String userAgent) {
+        RefreshToken refreshedToken;
+        if (refreshTokenService.existsRefreshTokenByUser(user)) {
+            refreshedToken = refreshTokenService.updateToken(refreshTokenService.findByUser(user), ipAddress, userAgent);
+        } else {
+            refreshedToken = refreshTokenService.create(user, ipAddress, userAgent);
+        }
+
+        upsertUserSession(user, refreshedToken, ipAddress, userAgent);
+        return refreshedToken;
+    }
+
+    /**
+     * Crea o actualiza la sesión de usuario con el token y metadatos actuales.
+     */
+    private void upsertUserSession(User user, RefreshToken refreshToken, String ipAddress, String userAgent) {
+        UserSession userSession = userSessionService.findByUser(user);
+        if (userSession == null) {
+            userSessionService.create(user, refreshToken, ipAddress, userAgent);
+        } else {
+            userSession.setRefreshToken(refreshToken);
+            userSession.setIpAddress(ipAddress);
+            userSession.setDeviceInfo(userAgent);
+            userSession.setRevoked(false);
+            userSessionService.update(userSession);
         }
     }
 

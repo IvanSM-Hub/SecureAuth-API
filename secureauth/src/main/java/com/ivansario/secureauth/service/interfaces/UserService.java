@@ -10,5 +10,6 @@ public interface UserService {
     User createUser(CreateUserRequest createUserRequest, Role role);
     User updateUser(User user);
     boolean existsUser(String userKey);
+    User changePassword(User user, String newPassword);
 
 }

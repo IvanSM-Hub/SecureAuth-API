@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import com.ivansario.secureauth.dto.CreateUserRequest;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
+import com.ivansario.secureauth.exception.InvalidCredentialsException;
 import com.ivansario.secureauth.repository.UserRepository;
 import com.ivansario.secureauth.service.interfaces.UserService;
 
@@ -79,6 +80,30 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             log.warn("Se intentó buscar un usuario con una clave nula o vacía");
             throw new IllegalArgumentException("La clave de búsqueda no puede estar vacía");
         }
+    }
+
+    @Override
+    public User changePassword(User user, String newPassword) {
+        
+        String oldEncryptPassword = user.getPassword();
+        
+        if (passwordEncoder.matches(newPassword, oldEncryptPassword)) {
+            log.error("La contraseña que desea modificar debe ser distinta a la existente");
+            throw new InvalidCredentialsException("La contraseña que desea modificar debe ser distinta a la existente");
+        }
+
+        String encryptNewPassword = passwordEncoder.encode(newPassword);
+
+        user.setPasswordHash(encryptNewPassword);
+
+        User userNewPassword = userRepository.save(user);
+
+        if (!passwordEncoder.matches(newPassword, userNewPassword.getPasswordHash())) {
+            log.error("La contraseña No se ha podido actualizar correctamente en el usuario: " + userNewPassword.getSurname());
+            throw new InvalidCredentialsException("La contraseña No se ha podido actualizar correctamente en el usuario: " + userNewPassword.getSurname());
+        }
+
+        return userRepository.save(user);
     }
 
 }
