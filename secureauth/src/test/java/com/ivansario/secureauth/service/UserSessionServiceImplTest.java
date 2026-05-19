@@ -221,7 +221,7 @@ class UserSessionServiceImplTest {
             when(userSessionRepository.findByUser(user)).thenReturn(Optional.of(activeSession));
             when(userSessionRepository.save(any(UserSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            boolean revoked = userSessionService.revokeLastSession(user);
+            boolean revoked = userSessionService.revokeSession(user);
 
             assertTrue(revoked);
             assertTrue(activeSession.isRevoked());
@@ -233,7 +233,7 @@ class UserSessionServiceImplTest {
         void shouldReturnFalseWhenUserHasNoSession() {
             when(userSessionRepository.findByUser(user)).thenReturn(Optional.empty());
 
-            boolean revoked = userSessionService.revokeLastSession(user);
+            boolean revoked = userSessionService.revokeSession(user);
 
             assertFalse(revoked);
             verify(userSessionRepository).findByUser(user);
@@ -252,7 +252,7 @@ class UserSessionServiceImplTest {
 
             when(userSessionRepository.findByUser(user)).thenReturn(Optional.of(revokedSession));
 
-            boolean revoked = userSessionService.revokeLastSession(user);
+            boolean revoked = userSessionService.revokeSession(user);
 
             assertFalse(revoked);
             assertTrue(revokedSession.isRevoked());
@@ -265,7 +265,7 @@ class UserSessionServiceImplTest {
             when(userSessionRepository.findByUser(user)).thenReturn(Optional.of(userSession));
             when(userSessionRepository.save(any(UserSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-            userSessionService.revokeLastSession(user);
+            userSessionService.revokeSession(user);
 
             ArgumentCaptor<UserSession> sessionCaptor = ArgumentCaptor.forClass(UserSession.class);
             verify(userSessionRepository).save(sessionCaptor.capture());

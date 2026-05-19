@@ -14,6 +14,6 @@ public interface UserSessionService {
     UserSession findByUser(User user);
     UserSession create(User user, RefreshToken refreshToken, String ipAddress, String UserAgent);
     UserSession update(UserSession session);
-    boolean revokeLastSession(User user);
+    boolean revokeSession(User user);
     
 }

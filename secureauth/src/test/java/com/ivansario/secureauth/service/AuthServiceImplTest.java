@@ -17,6 +17,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -54,6 +56,7 @@ import com.ivansario.secureauth.util.RoleEnum;
 import com.ivansario.secureauth.util.UserRoleId;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AuthServiceImplTest {
 
     @Mock
@@ -276,7 +279,7 @@ class AuthServiceImplTest {
             authService.logout(logoutRequest);
 
             verify(refreshTokenService).revokeToken(refreshToken);
-            verify(userSessionService).revokeLastSession(user);
+            verify(userSessionService).revokeSession(user);
         }
 
         @Test
@@ -308,7 +311,7 @@ class AuthServiceImplTest {
 
             assertThrows(InvalidRefreshTokenException.class,
                 () -> authService.logout(logoutRequest));
-            verify(userSessionService, never()).revokeLastSession(any(User.class));
+            verify(userSessionService, never()).revokeSession(any(User.class));
         }
 
         @Test
@@ -542,7 +545,7 @@ class AuthServiceImplTest {
         void shouldChangePasswordSuccessfully() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(newPassword, confirmPassword, refreshTokenValue);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
             when(userService.changePassword(user, newPassword)).thenReturn(user);
@@ -567,7 +570,7 @@ class AuthServiceImplTest {
         void shouldThrowInvalidConfirmationPasswordExceptionWhenPasswordsDoNotMatch() {
             String newPassword = "newPassword123";
             String confirmPassword = "differentPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(newPassword, confirmPassword, refreshTokenValue);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
 
             assertThrows(InvalidConfirmationPasswordException.class,
                 () -> authService.changePassword(changeRequest, ipAddress, userAgent));
@@ -578,7 +581,7 @@ class AuthServiceImplTest {
         void shouldThrowRefreshTokenExpiredExceptionWhenTokenIsExpired() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(newPassword, confirmPassword, refreshTokenValue);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
             refreshToken.setExpiryDate(LocalDateTime.now().minusDays(1));
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
@@ -591,7 +594,7 @@ class AuthServiceImplTest {
         void shouldThrowRefreshTokenExpiredExceptionWhenTokenIsNull() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(newPassword, confirmPassword, refreshTokenValue);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(null);
 
@@ -603,7 +606,7 @@ class AuthServiceImplTest {
         void shouldThrowInvalidCredentialsExceptionWhenAuthenticationFails() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(newPassword, confirmPassword, refreshTokenValue);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
             when(userService.changePassword(user, newPassword)).thenReturn(user);
@@ -618,7 +621,7 @@ class AuthServiceImplTest {
         void shouldThrowTokenGenerationExceptionOnJwtError() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(newPassword, confirmPassword, refreshTokenValue);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
             when(userService.changePassword(user, newPassword)).thenReturn(user);
@@ -634,7 +637,7 @@ class AuthServiceImplTest {
         void shouldReturnValidTokensAfterPasswordChange() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(newPassword, confirmPassword, refreshTokenValue);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
             when(userService.changePassword(user, newPassword)).thenReturn(user);

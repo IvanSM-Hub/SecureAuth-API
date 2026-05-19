@@ -20,3 +20,12 @@ spring:
         format_sql: true
     show-sql: false
     open-in-view: false
+springdoc:
+  swagger-ui:
+    enabled: true
+  api-docs:
+    enabled: true
+  show-actuator: true
+logging:
+  level:
+    org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR

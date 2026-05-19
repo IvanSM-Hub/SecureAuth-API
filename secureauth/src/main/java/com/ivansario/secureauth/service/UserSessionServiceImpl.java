@@ -70,7 +70,7 @@ public class UserSessionServiceImpl implements UserSessionService {
      * @return {@code true} si la sesión fue revocada, {@code false} si no había sesión
      */
     @Override
-    public boolean revokeLastSession(User user) {
+    public boolean revokeSession(User user) {
         UserSession session = findByUser(user);
         
         if (session == null || session.isRevoked()) return false;

@@ -61,10 +61,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return (userKey.contains("@")
                 ? userRepository.findByEmail(userKey)
                 : userRepository.findByUsername(userKey))
-                .orElseThrow(() -> {
-                    log.error("Usuario no encontrado en la base de datos: {}", userKey);
-                    return new EntityNotFoundException("No se encontró el usuario: " + userKey);
-                });
+                .orElseThrow(() -> new EntityNotFoundException("No se encontró el usuario: " + userKey));
     }
 
     @Override
@@ -88,7 +85,6 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         String oldEncryptPassword = user.getPassword();
         
         if (passwordEncoder.matches(newPassword, oldEncryptPassword)) {
-            log.error("La contraseña que desea modificar debe ser distinta a la existente");
             throw new InvalidCredentialsException("La contraseña que desea modificar debe ser distinta a la existente");
         }
 
@@ -99,7 +95,6 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         User userNewPassword = userRepository.save(user);
 
         if (!passwordEncoder.matches(newPassword, userNewPassword.getPasswordHash())) {
-            log.error("La contraseña No se ha podido actualizar correctamente en el usuario: " + userNewPassword.getSurname());
             throw new InvalidCredentialsException("La contraseña No se ha podido actualizar correctamente en el usuario: " + userNewPassword.getSurname());
         }
 

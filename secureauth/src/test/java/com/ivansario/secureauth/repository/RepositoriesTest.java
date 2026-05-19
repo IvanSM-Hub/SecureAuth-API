@@ -103,8 +103,8 @@ class RepositoriesTest {
 
         // Act
         Permission permissionSaved = permissionRepository.save(permission);
-        Optional<Permission> permissionBuscado = permissionRepository.findByName(PermissionEnum.PERMISSION_CREATE.name());
-        boolean exists = permissionRepository.existsByName(PermissionEnum.PERMISSION_CREATE.name());
+        Optional<Permission> permissionBuscado = permissionRepository.findByName(PermissionEnum.PERMISSION_CREATE);
+        boolean exists = permissionRepository.existsByName(PermissionEnum.PERMISSION_CREATE);
 
         // Assert
         assertThat(permissionBuscado).isPresent();
