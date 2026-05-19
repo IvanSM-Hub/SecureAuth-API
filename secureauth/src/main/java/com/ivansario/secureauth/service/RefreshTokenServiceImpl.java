@@ -48,7 +48,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         RefreshToken rt = RefreshToken.builder()
                 .user(user)
                 .token(UUID.randomUUID().toString())
-                .ipAdress(ipAddress)
+                .ipAddress(ipAddress)
                 .userAgent(userAgent)
                 .revoked(false)
                 .build();
@@ -105,7 +105,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         existingRefreshToken.setExpiryDate(LocalDateTime.now().plusDays(1));
         existingRefreshToken.setToken(UUID.randomUUID().toString());
         existingRefreshToken.setRevoked(false);
-        existingRefreshToken.setIpAdress(ipAddress);
+        existingRefreshToken.setIpAddress(ipAddress);
         existingRefreshToken.setUserAgent(userAgent);
         return refreshTokenRepository.save(existingRefreshToken);
     }

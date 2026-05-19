@@ -1,13 +1,11 @@
 package com.ivansario.secureauth.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 
 import java.time.LocalDateTime;
 
 import com.ivansario.secureauth.util.UserRoleId;
 
-@AllArgsConstructor
 @Entity
 @Table(name = "user_roles")
 public class UserRole {
@@ -37,9 +35,18 @@ public class UserRole {
 
     public UserRole() {
     }
+
+    
     
     // Getters y Setters
     
+    public UserRole(UserRoleId id, User user, Role role, LocalDateTime assignedAt) {
+        this.id = id;
+        this.user = user;
+        this.role = role;
+        this.assignedAt = assignedAt;
+    }
+
     public UserRoleId getId() {
         return id;
     }

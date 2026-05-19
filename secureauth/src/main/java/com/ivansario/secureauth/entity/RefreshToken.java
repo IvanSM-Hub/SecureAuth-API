@@ -45,7 +45,7 @@ public class RefreshToken {
     private LocalDateTime createdAt;
 
     @Column(nullable = false, length = 45)
-    private String ipAdress;
+    private String ipAddress;
 
     @Column(nullable = false, length = 255)
     private String userAgent;
@@ -107,12 +107,12 @@ public class RefreshToken {
         this.createdAt = createdAt;
     }
 
-    public String getIpAdress() {
-        return ipAdress;
+    public String getIpAddress() {
+        return ipAddress;
     }
 
-    public void setIpAdress(String ipAdress) {
-        this.ipAdress = ipAdress;
+    public void setIpAddress(String ipAdress) {
+        this.ipAddress = ipAdress;
     }
 
     public String getUserAgent() {

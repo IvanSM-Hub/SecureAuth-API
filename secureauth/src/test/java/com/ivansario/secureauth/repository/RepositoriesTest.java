@@ -163,7 +163,7 @@ class RepositoriesTest {
         RefreshToken refreshToken = RefreshToken.builder()
         .user(userSaved)
         .token("testtoken123456789")
-        .ipAdress("127.0.0.1")
+        .ipAddress("127.0.0.1")
         .userAgent("Mozilla/5.0")
         .build();
 
@@ -177,7 +177,7 @@ class RepositoriesTest {
         assertThat(refreshTokenSaved.getId()).isNotNull();
         assertThat(refreshTokenBuscado.get().getToken()).isEqualTo("testtoken123456789");
         assertThat(refreshTokenBuscado.get().getUser()).isEqualTo(userSaved);
-        assertThat(refreshTokenBuscado.get().getIpAdress()).isEqualTo("127.0.0.1");
+        assertThat(refreshTokenBuscado.get().getIpAddress()).isEqualTo("127.0.0.1");
         assertThat(refreshTokenBuscado.get().isRevoked()).isFalse();
         assertThat(tokensPorUsuario).isNotEmpty();
         assertThat(tokensPorUsuario).contains(refreshTokenSaved);
@@ -279,7 +279,7 @@ class RepositoriesTest {
         RefreshToken refreshToken = RefreshToken.builder()
         .user(userSaved)
         .token("testtoken123456789")
-        .ipAdress("127.0.0.1")
+        .ipAddress("127.0.0.1")
         .userAgent("Mozilla/5.0")
         .build();
         RefreshToken refreshTokenSaved = refreshTokenRepository.save(refreshToken);
