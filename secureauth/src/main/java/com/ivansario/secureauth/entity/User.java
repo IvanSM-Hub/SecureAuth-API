@@ -6,9 +6,8 @@ import lombok.Builder;
 import lombok.NoArgsConstructor;
 
 import java.util.Collection;
-import java.util.Set;
+import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
@@ -55,8 +54,9 @@ public class User implements UserDetails {
     @Column(nullable = true)
     private LocalDateTime lastLogin;
 
-    @OneToMany(mappedBy = "user", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<UserRole> userRoles;
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;
 
     @PrePersist
     protected void onCreate() {
@@ -151,24 +151,17 @@ public class User implements UserDetails {
         this.lastLogin = lastLogin;
     }
 
-    public Set<UserRole> getUserRoles() {
-        return userRoles;
+    public void setRole(Role role) {
+        this.role = role;
     }
 
-    public void setUserRoles(Set<UserRole> userRoles) {
-        this.userRoles = userRoles;
-    }
-
-    public Set<Role> getRoles() {
-        if (userRoles == null) return Set.of();
-        return userRoles.stream().map(UserRole::getRole).collect(Collectors.toSet());
+    public Role getRole() {
+        return role;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.toString()))
-                .collect(Collectors.toList());
+        return getRole() != null ? List.of(new SimpleGrantedAuthority(getRole().getName().name())) : List.of();
     }
 
     @Override

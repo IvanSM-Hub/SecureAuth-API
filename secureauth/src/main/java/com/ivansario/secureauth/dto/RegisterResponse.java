@@ -1,7 +1,5 @@
 package com.ivansario.secureauth.dto;
 
-import java.util.Set;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,6 +15,6 @@ public class RegisterResponse {
 
     private String username;
     private String email;
-    private Set<String> role;
+    private String role;
 
 }

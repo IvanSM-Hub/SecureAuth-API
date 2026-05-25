@@ -6,17 +6,24 @@ import io.jsonwebtoken.JwtException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.ivansario.secureauth.entity.RefreshToken;
+import com.ivansario.secureauth.entity.User;
+import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.service.UserServiceImpl;
+import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
+import com.ivansario.secureauth.service.interfaces.UserSessionService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Filtro de petición que valida el JWT en las solicitudes entrantes.
@@ -26,11 +33,14 @@ import lombok.RequiredArgsConstructor;
  * autenticación en el contexto de seguridad si el token es válido.
  */
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserServiceImpl userService;
+    private final UserSessionService userSessionService;
+    private final RefreshTokenService refreshTokenService;
 
     /**
      * Manejo principal del filtro:
@@ -57,6 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String useremail;
         
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.debug("JWT filter skipped for {} because Authorization header is missing or malformed", requestPath);
             filterChain.doFilter(request, response);
             return;
         }
@@ -64,16 +75,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         token = authHeader.substring(7);
         try {
             useremail = jwtUtil.extractUsername(token);
+            log.debug("JWT subject extracted for {}: {}", requestPath, useremail);
         } catch (JwtException ex) {
+            log.warn("JWT parsing failed for {}", requestPath, ex);
             SecurityContextHolder.clearContext();
             filterChain.doFilter(request, response);
             return;
         }
 
         if (useremail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userService.loadUserByUsername(useremail);
             try {
-                if (jwtUtil.isTokenValid(token, userDetails)) {
+                UserDetails userDetails = userService.loadUserByUsername(useremail);
+                User user = userService.findUser(useremail);
+                if (jwtUtil.isTokenValid(token, userDetails) && isSessionValid(user)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails, 
                         null,
@@ -81,14 +95,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    log.debug("JWT authentication established for {} with authorities {}", useremail, userDetails.getAuthorities());
+                } else {
+                    log.warn("JWT validation failed for {}", useremail);
+                    throw new JwtException("Invalid JWT token for user: " + useremail);
                 }
-            } catch (JwtException ex) {
+            } catch (JwtException | UsernameNotFoundException ex) {
+                log.warn("JWT authentication failed for {}", useremail, ex);
+                SecurityContextHolder.clearContext();
+            } catch (RuntimeException ex) {
+                log.warn("JWT authentication failed for {} due to runtime exception", useremail, ex);
                 SecurityContextHolder.clearContext();
             }
         }
 
         filterChain.doFilter(request, response);
 
+    }
+
+    private boolean isSessionValid(User user) {
+        UserSession session = userSessionService.findByUser(user);
+        if (session == null || session.isRevoked()) {
+            return false;
+        }
+
+        RefreshToken refreshToken = refreshTokenService.findByUser(user);
+        if (refreshToken == null) {
+            return false;
+        }
+
+        return !refreshToken.isRevoked() && !refreshToken.isExpired();
     }
 
 }

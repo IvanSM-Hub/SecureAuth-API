@@ -38,7 +38,6 @@ import com.ivansario.secureauth.dto.RegisterResponse;
 import com.ivansario.secureauth.entity.RefreshToken;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
-import com.ivansario.secureauth.entity.UserRole;
 import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.exception.InvalidConfirmationPasswordException;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
@@ -50,10 +49,8 @@ import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.security.JwtUtil;
 import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
 import com.ivansario.secureauth.service.interfaces.RoleService;
-import com.ivansario.secureauth.service.interfaces.UserRoleService;
 import com.ivansario.secureauth.service.interfaces.UserSessionService;
 import com.ivansario.secureauth.util.RoleEnum;
-import com.ivansario.secureauth.util.UserRoleId;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -78,9 +75,6 @@ class AuthServiceImplTest {
     private RoleService roleService;
 
     @Mock
-    private UserRoleService userRoleService;
-
-    @Mock
     private Authentication authentication;
 
     @Mock
@@ -94,7 +88,6 @@ class AuthServiceImplTest {
     private Role roleUser;
     private RefreshToken refreshToken;
     private UserSession userSession;
-    private UserRole userRole;
 
     private final String username = "testuser";
     private final String email = "test@email.com";
@@ -129,6 +122,8 @@ class AuthServiceImplTest {
             .build();
         roleUser.setId(UUID.randomUUID());
 
+        user.setRole(roleUser);
+
         refreshToken = RefreshToken.builder()
             .token(refreshTokenValue)
             .user(user)
@@ -138,13 +133,6 @@ class AuthServiceImplTest {
             .expiryDate(LocalDateTime.now().plusDays(7))
             .build();
         refreshToken.setId(UUID.randomUUID());
-
-        userRole = new UserRole(
-            new UserRoleId(user.getId(), roleAdmin.getId()),
-            user,
-            roleAdmin,
-            LocalDateTime.now()
-            );
 
         userSession = UserSession.builder()
             .user(user)
@@ -175,6 +163,7 @@ class AuthServiceImplTest {
             when(refreshTokenService.existsRefreshTokenByUser(user)).thenReturn(false);
             when(refreshTokenService.create(user, ipAddress, userAgent)).thenReturn(refreshToken);
             when(userSessionService.findByUser(user)).thenReturn(null);
+            when(userService.updateUser(any(User.class))).thenReturn(user);
 
             AuthResponse response = authService.login(loginRequest, ipAddress, userAgent);
 
@@ -200,6 +189,7 @@ class AuthServiceImplTest {
             when(refreshTokenService.findByUser(user)).thenReturn(refreshToken);
             when(refreshTokenService.updateToken(refreshToken, ipAddress, userAgent)).thenReturn(refreshToken);
             when(userSessionService.findByUser(user)).thenReturn(userSession);
+            when(userService.updateUser(any(User.class))).thenReturn(user);
 
             AuthResponse response = authService.login(loginRequest, ipAddress, userAgent);
 
@@ -257,6 +247,7 @@ class AuthServiceImplTest {
             when(refreshTokenService.existsRefreshTokenByUser(user)).thenReturn(false);
             when(refreshTokenService.create(user, ipAddress, userAgent)).thenReturn(refreshToken);
             when(userSessionService.findByUser(user)).thenReturn(null);
+            when(userService.updateUser(any(User.class))).thenReturn(user);
 
             authService.login(loginRequest, ipAddress, userAgent);
 
@@ -338,6 +329,7 @@ class AuthServiceImplTest {
             when(userSessionService.findByUser(user)).thenReturn(userSession);
             when(refreshTokenService.updateToken(refreshToken, ipAddress, userAgent))
                 .thenReturn(refreshToken);
+            when(refreshTokenService.create(user, ipAddress, userAgent)).thenReturn(refreshToken);
             when(jwtUtil.generateToken(userDetails)).thenReturn(accessToken);
 
             AuthResponse response = authService.refreshToken(refreshRequest, ipAddress, userAgent);
@@ -382,7 +374,7 @@ class AuthServiceImplTest {
         }
 
         @Test
-        void shouldThrowSessionCreationExceptionWhenSessionIsRevoked() {
+        void shouldRefreshTokenWhenSessionIsRevoked() {
             RefreshTokenRequest refreshRequest = new RefreshTokenRequest(refreshTokenValue);
             UserSession revokedSession = UserSession.builder()
                 .user(user)
@@ -391,21 +383,35 @@ class AuthServiceImplTest {
                 .build();
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
+            when(userService.loadUserByUsername(email)).thenReturn(userDetails);
             when(userSessionService.findByUser(user)).thenReturn(revokedSession);
+            when(refreshTokenService.existsRefreshTokenByUser(user)).thenReturn(false);
+            when(refreshTokenService.create(user, ipAddress, userAgent)).thenReturn(refreshToken);
+            when(jwtUtil.generateToken(userDetails)).thenReturn(accessToken);
 
-            assertThrows(SessionCreationException.class,
-                () -> authService.refreshToken(refreshRequest, ipAddress, userAgent));
+            AuthResponse response = authService.refreshToken(refreshRequest, ipAddress, userAgent);
+
+            assertNotNull(response);
+            assertEquals(accessToken, response.getAccessToken());
+            verify(userSessionService).update(any(UserSession.class));
         }
 
         @Test
-        void shouldThrowSessionCreationExceptionWhenSessionDoesNotExist() {
+        void shouldCreateSessionWhenSessionDoesNotExist() {
             RefreshTokenRequest refreshRequest = new RefreshTokenRequest(refreshTokenValue);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
+            when(userService.loadUserByUsername(email)).thenReturn(userDetails);
             when(userSessionService.findByUser(user)).thenReturn(null);
+            when(refreshTokenService.existsRefreshTokenByUser(user)).thenReturn(false);
+            when(refreshTokenService.create(user, ipAddress, userAgent)).thenReturn(refreshToken);
+            when(jwtUtil.generateToken(userDetails)).thenReturn(accessToken);
 
-            assertThrows(SessionCreationException.class,
-                () -> authService.refreshToken(refreshRequest, ipAddress, userAgent));
+            AuthResponse response = authService.refreshToken(refreshRequest, ipAddress, userAgent);
+
+            assertNotNull(response);
+            assertEquals(accessToken, response.getAccessToken());
+            verify(userSessionService).create(user, refreshToken, ipAddress, userAgent);
         }
 
         @Test
@@ -415,8 +421,9 @@ class AuthServiceImplTest {
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
             when(userService.loadUserByUsername(email)).thenReturn(userDetails);
             when(userSessionService.findByUser(user)).thenReturn(userSession);
-            when(refreshTokenService.updateToken(refreshToken, ipAddress, userAgent))
-                .thenReturn(refreshToken);
+            when(refreshTokenService.existsRefreshTokenByUser(user)).thenReturn(true);
+            when(refreshTokenService.findByUser(user)).thenReturn(refreshToken);
+            when(refreshTokenService.updateToken(refreshToken, ipAddress, userAgent)).thenReturn(refreshToken);
             when(jwtUtil.generateToken(userDetails)).thenReturn(accessToken);
 
             authService.refreshToken(refreshRequest, ipAddress, userAgent);
@@ -441,10 +448,10 @@ class AuthServiceImplTest {
                 .password(password)
                 .build();
 
+            user.setRole(roleUser);
             when(userService.existsUser(email)).thenReturn(false);
             when(roleService.findByName(RoleEnum.ROLE_USER)).thenReturn(roleUser);
             when(userService.createUser(registerRequest, roleUser)).thenReturn(user);
-            when(userRoleService.create(user, roleUser)).thenReturn(userRole);
 
             RegisterResponse response = authService.register(registerRequest, ipAddress, userAgent, RoleEnum.ROLE_USER);
 
@@ -452,7 +459,6 @@ class AuthServiceImplTest {
             assertEquals(username, response.getUsername());
             assertEquals(email, response.getEmail());
             verify(userService).createUser(registerRequest, roleUser);
-            verify(userRoleService).create(user, roleUser);
         }
 
         @Test
@@ -502,23 +508,6 @@ class AuthServiceImplTest {
         }
 
         @Test
-        void shouldThrowExceptionWhenUserRoleCreationFails() {
-            CreateUserRequest registerRequest = CreateUserRequest.builder()
-                .email(email)
-                .username(username)
-                .password(password)
-                .build();
-
-            when(userService.existsUser(email)).thenReturn(false);
-            when(roleService.findByName(RoleEnum.ROLE_USER)).thenReturn(roleUser);
-            when(userService.createUser(registerRequest, roleUser)).thenReturn(user);
-            when(userRoleService.create(user, roleUser)).thenReturn(null);
-
-            assertThrows(RuntimeException.class,
-                () -> authService.register(registerRequest, ipAddress, userAgent, RoleEnum.ROLE_USER));
-        }
-
-        @Test
         void shouldAssignCorrectRoleToNewUser() {
             CreateUserRequest registerRequest = CreateUserRequest.builder()
                 .email(email)
@@ -526,15 +515,15 @@ class AuthServiceImplTest {
                 .password(password)
                 .build();
 
+            user.setRole(roleAdmin);
             when(userService.existsUser(email)).thenReturn(false);
             when(roleService.findByName(RoleEnum.ROLE_ADMIN)).thenReturn(roleAdmin);
             when(userService.createUser(registerRequest, roleAdmin)).thenReturn(user);
-            when(userRoleService.create(user, roleAdmin)).thenReturn(userRole);
 
             RegisterResponse response = authService.register(registerRequest, ipAddress, userAgent, RoleEnum.ROLE_ADMIN);
 
             assertNotNull(response);
-            verify(userRoleService).create(user, roleAdmin);
+            assertEquals(RoleEnum.ROLE_ADMIN.name(), response.getRole());
         }
     }
 

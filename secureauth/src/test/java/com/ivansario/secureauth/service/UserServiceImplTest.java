@@ -81,6 +81,7 @@ class UserServiceImplTest {
             .name(RoleEnum.ROLE_ADMIN)
             .description("Full system access with all permissions")
             .build();
+        testUser.setRole(roleAdmin);
     }
 
     @Nested
@@ -104,6 +105,7 @@ class UserServiceImplTest {
             assertEquals(username, userCreated.getUsername());
             assertEquals(email, userCreated.getEmail());
             assertEquals(hashedPassword, userCreated.getPasswordHash());
+            assertEquals(roleAdmin, userCreated.getRole());
             assertEquals(generatedId, userCreated.getId());
             verify(passwordEncoder).encode(password);
             verify(userRepository).save(any(User.class));
@@ -116,17 +118,20 @@ class UserServiceImplTest {
 
         @Test
         void shouldLoadUserByEmailSuccessfully() {
-            when(userRepository.findByEmail(email)).thenReturn(Optional.of(testUser));
+            when(userRepository.findByEmailWithRoles(email)).thenReturn(Optional.of(testUser));
 
             UserDetails loadedUser = userService.loadUserByUsername(email);
 
-            assertSame(testUser, loadedUser);
-            verify(userRepository).findByEmail(email);
+            assertEquals(username, loadedUser.getUsername());
+            assertEquals(password, loadedUser.getPassword());
+            assertThat(loadedUser.getAuthorities())
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_" + roleAdmin.getName().name()));
+            verify(userRepository).findByEmailWithRoles(email);
         }
 
         @Test
         void shouldThrowExceptionWhenUserIsNotFound() {
-            when(userRepository.findByEmail(email)).thenReturn(Optional.empty());
+            when(userRepository.findByEmailWithRoles(email)).thenReturn(Optional.empty());
 
             UsernameNotFoundException exception = assertThrows(
                 UsernameNotFoundException.class,
@@ -134,7 +139,7 @@ class UserServiceImplTest {
             );
 
             assertThat(exception.getMessage()).contains(email);
-            verify(userRepository).findByEmail(email);
+            verify(userRepository).findByEmailWithRoles(email);
         }
     }
 
@@ -194,7 +199,7 @@ class UserServiceImplTest {
                 () -> userService.findUser("   ")
             );
 
-            assertThat(exception.getMessage()).contains("vacía");
+            assertThat(exception.getMessage()).contains("cannot be empty");
         }
     }
 
@@ -228,7 +233,7 @@ class UserServiceImplTest {
                 () -> userService.existsUser(null)
             );
 
-            assertThat(exception.getMessage()).contains("vacía");
+            assertThat(exception.getMessage()).contains("cannot be empty");
         }
     }
 
@@ -292,7 +297,7 @@ class UserServiceImplTest {
                 () -> userService.changePassword(testUser, newPassword)
             );
 
-            assertThat(exception.getMessage()).contains("distinta");
+            assertThat(exception.getMessage()).contains("different from the existing one");
             verify(passwordEncoder).matches(newPassword, password);
         }
 
@@ -324,7 +329,7 @@ class UserServiceImplTest {
                 () -> userService.changePassword(userWithOldPassword, newPassword)
             );
 
-            assertThat(exception.getMessage()).contains("No se ha podido actualizar");
+            assertThat(exception.getMessage()).contains("could not be updated correctly");
             verify(passwordEncoder).matches(newPassword, "old_hashed_password");
             verify(passwordEncoder).encode(newPassword);
             verify(passwordEncoder).matches(newPassword, "wrong_hashed_password");

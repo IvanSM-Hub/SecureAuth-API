@@ -45,6 +45,9 @@ The project follows a **Layered Architecture** to ensure separation of concerns,
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/auth/register` | Register a new user | Public |
 | `POST` | `/api/auth/login` | Login and get JWT token | Public |
+| `POST` | `/api/auth/logout` | Invalidates the JWT token and session too | Private |
+| `POST` | `/api/auth/refresh` | Refresh the JWT token from the user and keeps the session valitade | Private |
+| `POST` | `/api/auth/newPassword` | The user can change the password, if he had the token from his session | Private |
 
 ### Users
 | Method | Endpoint | Description | Access |

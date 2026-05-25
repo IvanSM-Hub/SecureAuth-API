@@ -12,7 +12,7 @@ public interface AuthService {
 
     RegisterResponse register(CreateUserRequest request, String ipAddress, String userAgent, RoleEnum roleEnum);
     AuthResponse login(LoginRequest request, String ipAddress, String userAgent);
-    AuthResponse refreshToken(RefreshTokenRequest refreshTockenRequest, String ipAddress, String userAgent);
+    AuthResponse refreshToken(RefreshTokenRequest refreshTokenRequest, String ipAddress, String userAgent);
     void logout(RefreshTokenRequest logoutRefreshToken);
     AuthResponse changePassword(NewPasswordUserRequest request, String ipAddress, String userAgent);
 

@@ -1,8 +1,6 @@
 package com.ivansario.secureauth.service;
 
 import java.time.LocalDateTime;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,7 +18,6 @@ import com.ivansario.secureauth.dto.RegisterResponse;
 import com.ivansario.secureauth.entity.RefreshToken;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
-import com.ivansario.secureauth.entity.UserRole;
 import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.exception.InvalidConfirmationPasswordException;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
@@ -34,16 +31,14 @@ import com.ivansario.secureauth.security.JwtUtil;
 import com.ivansario.secureauth.service.interfaces.AuthService;
 import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
 import com.ivansario.secureauth.service.interfaces.RoleService;
-import com.ivansario.secureauth.service.interfaces.UserRoleService;
 import com.ivansario.secureauth.service.interfaces.UserSessionService;
 import com.ivansario.secureauth.util.RoleEnum;
 
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
-import jakarta.transaction.Transactional;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
+
+import jakarta.transaction.Transactional;
 
 /**
  * Implementación del servicio de autenticación.
@@ -64,7 +59,6 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final UserSessionService userSessionService;
     private final RoleService roleService;
-    private final UserRoleService userRoleService;
 
     /**
      * Autentica al usuario y genera access y refresh tokens, además de
@@ -78,7 +72,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional
-    public AuthResponse login(@Valid @RequestBody LoginRequest request, String ipAddress, String userAgent) {
+    public AuthResponse login(LoginRequest request, String ipAddress, String userAgent) {
 
         Authentication authentication = authenticate(request.getUsername(), request.getPassword());
 
@@ -107,7 +101,7 @@ public class AuthServiceImpl implements AuthService {
         return AuthResponse.builder()
                 .username(userNewLastLogin.getUsername())
                 .email(userNewLastLogin.getEmail())
-                .role(toRoleNames(user))
+                .role(userNewLastLogin.getRole().getName().name())
                 .accessToken(accessToken)
                 .refreshToken(refreshedToken.getToken())
                 .build();
@@ -120,7 +114,7 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional
-    public void logout(@Valid @RequestBody RefreshTokenRequest logoutRefreshToken) {
+    public void logout(RefreshTokenRequest logoutRefreshToken) {
         
         RefreshToken foundRefreshToken = refreshTokenService.findByToken(logoutRefreshToken.getToken());
         validateRefreshToken(foundRefreshToken);
@@ -146,7 +140,8 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     @Transactional
-    public AuthResponse refreshToken(@Valid @RequestBody RefreshTokenRequest request, String ipAddress, String userAgent) {
+    public AuthResponse refreshToken(RefreshTokenRequest request, String ipAddress, String userAgent) {
+        
         RefreshToken oldToken = refreshTokenService.findByToken(request.getToken());
         validateRefreshToken(oldToken);
         if (oldToken.isRevoked()) {
@@ -157,16 +152,11 @@ public class AuthServiceImpl implements AuthService {
 
         UserSession userSession = userSessionService.findByUser(user);
         if (userSession == null || userSession.isRevoked()) {
-            throw new SessionCreationException("La sesión del usuario fue revocada");
+            userSession = new UserSession();
         }
         UserDetails userDetails = resolveUserDetails(user);
 
         RefreshToken newToken = createOrUpdateRefreshTokenAndSession(user, ipAddress, userAgent);
-
-        userSession.setRefreshToken(newToken);
-        userSession.setIpAddress(ipAddress);
-        userSession.setDeviceInfo(userAgent);
-        userSessionService.update(userSession);
 
         String newAccessToken = jwtUtil.generateToken(userDetails);
 
@@ -175,7 +165,7 @@ public class AuthServiceImpl implements AuthService {
         return AuthResponse.builder()
                 .username(user.getUsername())
                 .email(user.getEmail())
-                .role(toRoleNames(user))
+                .role(user.getRole() != null ? user.getRole().getName().name() : null)
                 .accessToken(newAccessToken)
                 .refreshToken(newToken.getToken())
                 .build();
@@ -193,7 +183,6 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public RegisterResponse register(
-            @Valid @RequestBody
             CreateUserRequest request,
             String ipAddress,
             String userAgent,
@@ -211,24 +200,20 @@ public class AuthServiceImpl implements AuthService {
         User user = userService.createUser(request, role);
         validateCreatedEntity(user, "Usuario");
 
-        UserRole userRole = userRoleService.create(user, role);
-        validateCreatedEntity(userRole, "Rol de usuario");
-
-        user.setUserRoles(Set.of(userRole));
+        user.setRole(role);
 
         log.info("Usuario {} registrado exitosamente. Debe hacer login para obtener acceso.", user.getUsername());
 
         return RegisterResponse.builder()
                 .username(user.getUsername())
                 .email(user.getEmail())
-                .role(toRoleNames(user))
+                .role(user.getRole().getName().name())
                 .build();
     }
 
     @Override
     @Transactional
     public AuthResponse changePassword(
-            @Valid @RequestBody 
             NewPasswordUserRequest request, 
             String ipAddress, 
             String userAgent) {
@@ -273,7 +258,7 @@ public class AuthServiceImpl implements AuthService {
         return AuthResponse.builder()
                 .username(userNewPassword.getUsername())
                 .email(userNewPassword.getEmail())
-                .role(toRoleNames(userNewPassword))
+                .role(userNewPassword.getRole().getName().name())
                 .accessToken(accessToken)
                 .refreshToken(refreshedToken.getToken())
                 .build();
@@ -372,12 +357,4 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    /**
-     * Convierte el conjunto de roles de la entidad {@code User} a nombres de rol.
-     */
-    private Set<String> toRoleNames(User user) {
-        return user.getRoles().stream()
-                .map(role -> role.getName().name())
-                .collect(Collectors.toSet());
-    }
 }

@@ -11,8 +11,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.util.Set;
-
 import org.junit.jupiter.api.BeforeEach;
 // import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,13 +86,13 @@ class AuthControllerTest {
                 .email(email)
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .role(Set.of("ROLE_USER"))
+                .role("ROLE_USER")
                 .build();
 
         registerResponse = RegisterResponse.builder()
                 .username(username)
                 .email(email)
-                .role(Set.of("ROLE_USER"))
+                .role("ROLE_USER")
                 .build();
     }
 
@@ -112,7 +110,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.accessToken").value(accessToken))
                 .andExpect(jsonPath("$.refreshToken").value(refreshToken))
-                .andExpect(jsonPath("$.role[0]").value("ROLE_USER"));
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
 
         verify(authService).login(any(LoginRequest.class), anyString(), anyString());
     }
@@ -170,7 +168,7 @@ class AuthControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.username").value(username))
                 .andExpect(jsonPath("$.email").value(email))
-                .andExpect(jsonPath("$.role[0]").value("ROLE_USER"));
+                .andExpect(jsonPath("$.role").value("ROLE_USER"));
 
         verify(authService).register(any(CreateUserRequest.class), anyString(), anyString(), eq(RoleEnum.ROLE_USER));
     }

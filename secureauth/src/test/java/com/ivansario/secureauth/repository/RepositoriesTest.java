@@ -18,12 +18,10 @@ import com.ivansario.secureauth.entity.RefreshToken;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.RolePermission;
 import com.ivansario.secureauth.entity.User;
-import com.ivansario.secureauth.entity.UserRole;
 import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.util.PermissionEnum;
 import com.ivansario.secureauth.util.RoleEnum;
 import com.ivansario.secureauth.util.RolePermissionId;
-import com.ivansario.secureauth.util.UserRoleId;
 
 @DataJpaTest
 class RepositoriesTest {
@@ -44,9 +42,6 @@ class RepositoriesTest {
     private RolePermissionRepository rolePermissionRepository;
 
     @Autowired
-    private UserRoleRepository userRoleRepository;
-
-    @Autowired
     private UserSessionRepository userSessionRepository;
 
     @Autowired
@@ -65,12 +60,19 @@ class RepositoriesTest {
         
         // Arrange
         String passwordPlana = "passwordtest";
+        Role role = Role.builder()
+        .name(RoleEnum.ROLE_USER)
+        .description("Usuario estándar")
+        .build();
+        Role roleSaved = roleRepository.save(role);
+
         User user = User.builder()
         .username("usertest")
         .name("nametest")
         .surname("surnametest")
         .email("test@email.com")
         .passwordHash(passwordEncoder.encode(passwordPlana))
+        .role(roleSaved)
         .build();
 
         // Act
@@ -151,12 +153,19 @@ class RepositoriesTest {
         
         // Arrange
         String passwordPlana = "passwordtest";
+        Role role = Role.builder()
+        .name(RoleEnum.ROLE_USER)
+        .description("Usuario estándar")
+        .build();
+        Role roleSaved = roleRepository.save(role);
+
         User user = User.builder()
         .username("usertest")
         .name("nametest")
         .surname("surnametest")
         .email("test@email.com")
         .passwordHash(passwordEncoder.encode(passwordPlana))
+        .role(roleSaved)
         .build();
         User userSaved = userRepository.save(user);
 
@@ -222,57 +231,23 @@ class RepositoriesTest {
     }
 
     @Test
-    public void testUserRoleRepository() {
-        
-        // Arrange
-        String passwordPlana = "passwordtest";
-        User user = User.builder()
-        .username("usertest")
-        .name("nametest")
-        .surname("surnametest")
-        .email("test@email.com")
-        .passwordHash(passwordEncoder.encode(passwordPlana))
-        .build();
-        User userSaved = userRepository.save(user);
-
-        Role role = Role.builder()
-        .name(RoleEnum.ROLE_ADMIN)
-        .description("Administrador del sistema")
-        .build();
-        Role roleSaved = roleRepository.save(role);
-
-        UserRoleId userRoleId = new UserRoleId(userSaved.getId(), roleSaved.getId());
-        UserRole userRole = new UserRole();
-        userRole.setId(userRoleId);
-        userRole.setUser(userSaved);
-        userRole.setRole(roleSaved);
-
-        // Act
-        UserRole userRoleSaved = userRoleRepository.save(userRole);
-        List<UserRole> rolesPorUsuario = userRoleRepository.findAllByUser(userSaved);
-        boolean exists = userRoleRepository.existsByUserAndRole(userSaved, roleSaved);
-
-        // Assert
-        assertThat(userRoleSaved.getId()).isNotNull();
-        assertThat(userRoleSaved.getUser()).isEqualTo(userSaved);
-        assertThat(userRoleSaved.getRole()).isEqualTo(roleSaved);
-        assertThat(rolesPorUsuario).isNotEmpty();
-        assertThat(rolesPorUsuario).contains(userRoleSaved);
-        assertThat(exists).isTrue();
-
-    }
-
-    @Test
     public void testUserSessionRepository() {
         
         // Arrange
         String passwordPlana = "passwordtest";
+        Role role = Role.builder()
+        .name(RoleEnum.ROLE_USER)
+        .description("Usuario estándar")
+        .build();
+        Role roleSaved = roleRepository.save(role);
+
         User user = User.builder()
         .username("usertest")
         .name("nametest")
         .surname("surnametest")
         .email("test@email.com")
         .passwordHash(passwordEncoder.encode(passwordPlana))
+        .role(roleSaved)
         .build();
         User userSaved = userRepository.save(user);
 

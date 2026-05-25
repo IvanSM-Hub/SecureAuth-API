@@ -17,7 +17,7 @@ spring:
       ddl-auto: update
     properties:
       hibernate:
-        format_sql: true
+        "[format_sql]": true
     show-sql: false
     open-in-view: false
 springdoc:
@@ -28,4 +28,4 @@ springdoc:
   show-actuator: true
 logging:
   level:
-    org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
+    "[org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer]": ERROR
