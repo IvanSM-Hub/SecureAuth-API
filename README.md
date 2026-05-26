@@ -54,8 +54,8 @@ The project follows a **Layered Architecture** to ensure separation of concerns,
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/user/all` | List all users | Admin |
 | `GET` | `/api/user/{id}` | Get user details | Admin / Owner |
-| `POST` | `/api/user/{id}` | Post to modify the user information | Admin / Owner |
-| `POST` | `/api/user/{id}` | Post to modify the user role | Admin |
+| `PUT` | `/api/user/{id}` | Post to modify the user information | Admin / Owner |
+| `PUT` | `/api/user/{id}` | Post to modify the user role | Admin |
 | `DELETE` | `/api/users/{id}` | Delete a user | Admin |
 
 ## Local Setup

@@ -14,14 +14,23 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.ivansario.secureauth.dto.CreateUserRequest;
-import com.ivansario.secureauth.dto.UpdateUserRequest;
+import com.ivansario.secureauth.dto.UpdateUserProfileRequest;
+import com.ivansario.secureauth.dto.UpdateUserRoleRequest;
 import com.ivansario.secureauth.dto.UserResponse;
+import com.ivansario.secureauth.entity.RefreshToken;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
+import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
+import com.ivansario.secureauth.exception.RefreshTokenRevokedException;
+import com.ivansario.secureauth.exception.SessionRevokeException;
 import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.repository.UserRepository;
+import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
+import com.ivansario.secureauth.service.interfaces.RoleService;
 import com.ivansario.secureauth.service.interfaces.UserService;
+import com.ivansario.secureauth.service.interfaces.UserSessionService;
+import com.ivansario.secureauth.util.RoleEnum;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +43,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RoleService roleService;
+    private final UserSessionService userSessionService;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -186,7 +198,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public UserResponse updateUser(String userId, UpdateUserRequest updateUser) {
+    @Transactional
+    public UserResponse updateUserProfile(String userId, UpdateUserProfileRequest updateUser) {
 
         UUID uuidUser = UUID.fromString(userId);
         User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + userId));
@@ -225,6 +238,107 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         .isActive(userFinded.isEnabled())
         .build();
 
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateUserRole(String userId, UpdateUserRoleRequest updateUser) {
+        UUID uuidUser = UUID.fromString(userId);
+        User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + userId));
+
+        String updatedRole = updateUser.getRoleName();
+
+        if (updatedRole == null) {
+            log.error("The attributes to update the user are null;");
+            throw new IllegalArgumentException("The attributes to update the user are null;");
+        }
+
+        Role role = roleService.findByName(RoleEnum.valueOf(updatedRole));
+
+        userFinded.setRole(role);
+
+        userFinded.setUpdatedAt(LocalDateTime.now());
+
+        userRepository.save(userFinded);
+
+        return UserResponse.builder()
+        .username(userFinded.getUsername())
+        .email(userFinded.getEmail())
+        .role(userFinded.getRole().getName().name())
+        .completeName(UserResponse.generateCompleteName(userFinded.getName(), userFinded.getSurname()))
+        .createdAt(userFinded.getCreatedAt())
+        .updatedAt(userFinded.getUpdatedAt())
+        .lastLogin(userFinded.getLastLogin())
+        .isActive(userFinded.isEnabled())
+        .build();
+    }
+
+    @Override
+    @Transactional
+    public UserResponse virtualDeleteUser(String userId) {
+        
+        UUID uuidUser = UUID.fromString(userId);
+
+        User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + userId));
+        userFinded.setEnabled(false);
+        userFinded.setUpdatedAt(LocalDateTime.now());
+
+        UserSession userSession = userSessionService.findByUser(userFinded);
+        userSession.setRevoked(true);
+        if (!userSession.isRevoked()) {
+            log.error("It can't be possible revoke the session from the user: " + userFinded.getEmail());
+            throw new SessionRevokeException("It can't be possible revoke the session from the user: " + userFinded.getEmail());
+        }
+
+        RefreshToken refreshToken = refreshTokenService.findByUser(userFinded);
+        RefreshToken revokedToken = refreshTokenService.revokeToken(refreshToken);
+        if (!revokedToken.isRevoked()) {
+            log.error("It can't be possible revoke the token from the user: " + userFinded.getEmail());
+            throw new RefreshTokenRevokedException("It can't be possible revoke the token from the user: " + userFinded.getEmail());
+        }
+
+        userRepository.save(userFinded);
+
+        return UserResponse.builder()
+        .username(userFinded.getUsername())
+        .email(userFinded.getEmail())
+        .role(userFinded.getRole().getName().name())
+        .completeName(UserResponse.generateCompleteName(userFinded.getName(), userFinded.getSurname()))
+        .createdAt(userFinded.getCreatedAt())
+        .updatedAt(userFinded.getUpdatedAt())
+        .lastLogin(userFinded.getLastLogin())
+        .isActive(userFinded.isEnabled())
+        .build();
+    }
+
+    @Override
+    public UserResponse activateUser(String userId) {
+        
+        UUID uuidUser = UUID.fromString(userId);
+
+        User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + userId));
+
+        userFinded.setEnabled(true);
+        userFinded.setUpdatedAt(LocalDateTime.now());
+
+        userRepository.save(userFinded);
+
+        return UserResponse.builder()
+        .username(userFinded.getUsername())
+        .email(userFinded.getEmail())
+        .role(userFinded.getRole().getName().name())
+        .completeName(UserResponse.generateCompleteName(userFinded.getName(), userFinded.getSurname()))
+        .createdAt(userFinded.getCreatedAt())
+        .updatedAt(userFinded.getUpdatedAt())
+        .lastLogin(userFinded.getLastLogin())
+        .isActive(userFinded.isEnabled())
+        .build();
+    }
+
+    @Override
+    public UserResponse permanentlyDeleteUser(String userId) {
+        // TODO Auto-generated method stub
+        return null;
     }
 
 }

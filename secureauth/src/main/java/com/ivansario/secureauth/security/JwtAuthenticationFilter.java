@@ -124,7 +124,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return false;
         }
 
-        return !refreshToken.isRevoked() && !refreshToken.isExpired();
+        return !refreshToken.isRevoked() && !refreshToken.isExpired() && user.isEnabled();
     }
 
 }

@@ -12,7 +12,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UpdateUserRequest {
+public class UpdateUserProfileRequest {
 
     @Size(min = 3, max = 100, message = "Username must be between 3 and 100 characters")
     private String username;
@@ -23,5 +23,7 @@ public class UpdateUserRequest {
     @Size(max = 255, message = "Surname cannot exceed 255 characters")
     private String surname;
 
+    @Size(max=20, message="Role cannot exceed 20 characters")
+    private String roleName;
 
 }
