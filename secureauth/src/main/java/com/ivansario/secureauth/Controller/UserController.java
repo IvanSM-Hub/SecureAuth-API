@@ -20,7 +20,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 
 
 @RestController
@@ -59,7 +59,7 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserById(userId));
     }
 
-    @PostMapping("/{userId}")
+    @PutMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN') or @userSecurity.isOwner(#userId)")
     @Operation(
         summary = "Post to update a user beening the admin or the owner user",
