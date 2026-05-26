@@ -14,10 +14,10 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 
 /**
- * Utilidad para generación y validación de JWT.
+ * Utility for JWT generation and validation.
  *
- * Lee la clave secreta y el tiempo de expiración desde variables de entorno
- * y provee métodos para generar tokens, extraer el username y validar tokens.
+ * Reads the secret key and expiration time from environment variables
+ * and provides methods to generate tokens, extract the username and validate tokens.
  */
 @Component
 public class JwtUtil {

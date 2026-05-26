@@ -11,6 +11,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,6 +28,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ivansario.secureauth.dto.CreateUserRequest;
+import com.ivansario.secureauth.dto.UserResponse;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
@@ -47,8 +50,11 @@ class UserServiceImplTest {
     private UserServiceImpl userService;
 
     private User testUser;
+    private User testRoleUser;
     private CreateUserRequest createUserRequest;
     private Role roleAdmin;
+    private Role roleUser;
+    private List<UserResponse> usersResponse = new ArrayList<>();
 
     private final String name = "nametest";
     private final String surname = "surnametest";
@@ -66,6 +72,7 @@ class UserServiceImplTest {
             .passwordHash(password)
             .name(name)
             .surname(surname)
+            .enabled(true)
             .build();
         testUser.setId(UUID.randomUUID());
 
@@ -82,6 +89,47 @@ class UserServiceImplTest {
             .description("Full system access with all permissions")
             .build();
         testUser.setRole(roleAdmin);
+
+        testRoleUser = User.builder()
+            .username("testusername2")
+            .email("testemail2@gmail.com")
+            .passwordHash("passwordhash2")
+            .name("testname2")
+            .surname("testSurname2")
+            .enabled(true)
+            .build();
+        testRoleUser.setId(UUID.randomUUID());
+
+        roleUser = Role.builder()
+            .name(RoleEnum.ROLE_USER)
+            .description("Standard user with limited permissions")
+            .build();
+        testRoleUser.setRole(roleUser);
+
+        usersResponse.add(
+            UserResponse.builder()
+            .username(testUser.getUsername())
+            .email(testUser.getEmail())
+            .role(testUser.getRole().getName().name())
+            .completeName(UserResponse.generateCompleteName(testUser.getName(), testUser.getSurname()))
+            .createdAt(testUser.getCreatedAt())
+            .updatedAt(testUser.getUpdatedAt())
+            .lastLogin(testUser.getLastLogin())
+            .isActive(testUser.isEnabled())
+            .build()
+        );
+        usersResponse.add(
+            UserResponse.builder()
+            .username(testRoleUser.getUsername())
+            .email(testRoleUser.getEmail())
+            .role(testRoleUser.getRole().getName().name())
+            .completeName(UserResponse.generateCompleteName(testRoleUser.getName(), testRoleUser.getSurname()))
+            .createdAt(testRoleUser.getCreatedAt())
+            .updatedAt(testRoleUser.getUpdatedAt())
+            .lastLogin(testRoleUser.getLastLogin())
+            .isActive(testRoleUser.isEnabled())
+            .build()
+        );
     }
 
     @Nested
@@ -125,7 +173,7 @@ class UserServiceImplTest {
             assertEquals(username, loadedUser.getUsername());
             assertEquals(password, loadedUser.getPassword());
             assertThat(loadedUser.getAuthorities())
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_" + roleAdmin.getName().name()));
+                .anyMatch(authority -> authority.getAuthority().equals(roleAdmin.getName().name()));
             verify(userRepository).findByEmailWithRoles(email);
         }
 
@@ -335,4 +383,17 @@ class UserServiceImplTest {
             verify(passwordEncoder).matches(newPassword, "wrong_hashed_password");
         }
     }
+
+    @Nested
+    class FindAllUsers {
+
+        @Test
+        void shouldReturnAllUsersLoads() {
+            when(userRepository.findAllWithRoles()).thenReturn(List.of(testUser, testRoleUser));
+            List<UserResponse> allUsers = userService.getAllUsers();
+            assertEquals(username, allUsers.get(0).getUsername());
+        }
+
+    }
+
 }

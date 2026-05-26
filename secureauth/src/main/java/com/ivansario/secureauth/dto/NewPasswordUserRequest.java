@@ -15,16 +15,16 @@ import lombok.Setter;
 @Builder
 public class NewPasswordUserRequest {
 
-    @NotBlank(message = "El refresh token no puede estar vacío")
-    @Size(min = 20, max = 500, message = "El token no tiene el formato correcto")
+    @NotBlank(message = "Refresh token cannot be blank")
+    @Size(min = 20, max = 500, message = "The token has an invalid format")
     private String token;
 
-    @NotBlank(message = "La nueva contraseña es obligatoria")
-    @Size(min = 8, max = 255, message = "La contraseña debe tener entre 8 y 255 caracteres")
+    @NotBlank(message = "New password is required")
+    @Size(min = 8, max = 255, message = "Password must be between 8 and 255 characters")
     private String newPassword;
 
-    @NotBlank(message = "La confirmación de contraseña es obligatoria")
-    @Size(min = 8, max = 255, message = "La confirmación debe tener entre 8 y 255 caracteres")
+    @NotBlank(message = "Password confirmation is required")
+    @Size(min = 8, max = 255, message = "Confirmation must be between 8 and 255 characters")
     private String confirmPassword;
 
 }

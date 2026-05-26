@@ -16,21 +16,21 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class CreateUserRequest {
-    @NotBlank(message = "El email es obligatorio")
-    @Email(message = "El formato del email no es valido")
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
     private String email;
 
-    @NotBlank(message = "El username es obligatorio")
-    @Size(min = 3, max = 100, message = "El username debe tener entre 3 y 100 caracteres")
+    @NotBlank(message = "Username is required")
+    @Size(min = 3, max = 100, message = "Username must be between 3 and 100 characters")
     private String username;
 
-    @Size(max = 255, message = "El nombre no puede exceder 255 caracteres")
+    @Size(max = 255, message = "Name cannot exceed 255 characters")
     private String name;
 
-    @Size(max = 255, message = "El apellido no puede exceder 255 caracteres")
+    @Size(max = 255, message = "Surname cannot exceed 255 characters")
     private String surname;
 
-    @NotBlank(message = "La contraseña es obligatoria")
-    @Size(min = 8, max = 255, message = "La contraseña debe tener entre 8 y 255 caracteres")
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, max = 255, message = "Password must be between 8 and 255 characters")
     private String password;
 }

@@ -19,9 +19,9 @@ import com.ivansario.secureauth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Configuración de seguridad de Spring Security para la aplicación.
+ * Spring Security configuration for the application.
  *
- * Define el filtro JWT, el proveedor de autenticación y la política de sesiones.
+ * Defines the JWT filter, authentication provider and session policy.
  */
 @Configuration
 @EnableWebSecurity
@@ -35,11 +35,11 @@ public class SecurityConfig {
     private final SecurityPassEncoderConfig passEncoderConfig;
 
     /**
-     * Configura la cadena de filtros de seguridad:
-     * - Desactiva CSRF
-     * - Usa sesiones estateless
-     * - Permite endpoints de autenticación y requiere autenticación para el resto
-     * - Añade el filtro JWT antes del filtro de autenticación por formulario
+    * Configures the security filter chain:
+    * - Disables CSRF
+    * - Uses stateless sessions
+    * - Allows authentication endpoints and requires authentication for the rest
+    * - Adds the JWT filter before the form authentication filter
      */
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) {
@@ -60,7 +60,7 @@ public class SecurityConfig {
     }
 
     /**
-     * Proveedor de autenticación que usa el {@link UserDetailsService} y el encoder de contraseñas.
+    * Authentication provider that uses the {@link UserDetailsService} and the password encoder.
      */
     @Bean
     AuthenticationProvider authenticationProvider() {
@@ -70,7 +70,7 @@ public class SecurityConfig {
     }
     
     /**
-     * Exposición del {@link AuthenticationManager} a partir de la configuración de autenticación.
+    * Exposes the {@link AuthenticationManager} from the authentication configuration.
      */
     @Bean
     AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {

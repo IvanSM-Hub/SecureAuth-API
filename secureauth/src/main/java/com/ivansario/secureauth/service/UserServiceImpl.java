@@ -1,6 +1,8 @@
 package com.ivansario.secureauth.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.hibernate.validator.internal.constraintvalidators.bv.EmailValidator;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,10 +14,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.ivansario.secureauth.dto.CreateUserRequest;
+import com.ivansario.secureauth.dto.UpdateUserRequest;
 import com.ivansario.secureauth.dto.UserResponse;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
+import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.repository.UserRepository;
 import com.ivansario.secureauth.service.interfaces.UserService;
 
@@ -160,6 +164,67 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                         .build())
                 .toList();
         return userResponses;
+    }
+
+    @Override
+    public UserResponse getUserById(String userId) {
+        
+        UUID uuidUser = UUID.fromString(userId);
+        User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + userId));
+        
+        return UserResponse.builder()
+        .username(userFinded.getUsername())
+        .email(userFinded.getEmail())
+        .role(userFinded.getRole().getName().name())
+        .completeName(UserResponse.generateCompleteName(userFinded.getName(), userFinded.getSurname()))
+        .createdAt(userFinded.getCreatedAt())
+        .updatedAt(userFinded.getUpdatedAt())
+        .lastLogin(userFinded.getLastLogin())
+        .isActive(userFinded.isEnabled())
+        .build();
+        
+    }
+
+    @Override
+    public UserResponse updateUser(String userId, UpdateUserRequest updateUser) {
+
+        UUID uuidUser = UUID.fromString(userId);
+        User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + userId));
+
+        String updatedUsername = updateUser.getUsername();
+        String updatedName = updateUser.getName();
+        String updatedSurname = updateUser.getSurname();
+
+        if (updatedUsername == null && updatedName == null && updatedSurname == null) {
+            log.error("The attributes to update the user are null;");
+            throw new IllegalArgumentException("The attributes to update the user are null;");
+        }
+
+        if (updatedUsername != null && !updatedUsername.isBlank()) {
+            userFinded.setUsername(updatedUsername.trim());
+        }
+        if (updatedName != null && !updatedName.isBlank()) {
+            userFinded.setName(updatedName.trim());
+        }
+        if (updatedSurname != null && !updatedSurname.isBlank()) {
+            userFinded.setSurname(updatedSurname.trim());
+        }
+
+        userFinded.setUpdatedAt(LocalDateTime.now());
+
+        userRepository.save(userFinded);
+
+        return UserResponse.builder()
+        .username(userFinded.getUsername())
+        .email(userFinded.getEmail())
+        .role(userFinded.getRole().getName().name())
+        .completeName(UserResponse.generateCompleteName(userFinded.getName(), userFinded.getSurname()))
+        .createdAt(userFinded.getCreatedAt())
+        .updatedAt(userFinded.getUpdatedAt())
+        .lastLogin(userFinded.getLastLogin())
+        .isActive(userFinded.isEnabled())
+        .build();
+
     }
 
 }

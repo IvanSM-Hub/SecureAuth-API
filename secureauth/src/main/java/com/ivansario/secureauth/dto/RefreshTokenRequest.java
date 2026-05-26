@@ -15,8 +15,8 @@ import lombok.Setter;
 @Builder
 public class RefreshTokenRequest {
 
-    @NotBlank(message = "El refresh token no puede estar vacío")
-    @Size(min = 20, max = 500, message = "El token aportado no tiene el formato correcto")    
+    @NotBlank(message = "Refresh token cannot be blank")
+    @Size(min = 20, max = 500, message = "The provided token has an invalid format")    
     private String token;
 
 }

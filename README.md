@@ -1,10 +1,10 @@
-# SecureAuth API 🔐
+# SecureAuth API
 
 A professional-grade RESTful API built with **Java 21** and **Spring Boot 3**, focused on secure user authentication and authorization using **JSON Web Tokens (JWT)**.
 
 This project demonstrates a production-ready architecture, implementing security best practices, automated documentation, and containerization.
 
-## 🚀 Technical Features
+## Technical Features
 
 - **Java 21 (LTS):** Utilizing modern language features for clean and efficient code.
 - **Spring Security 6:** Robust security configuration with stateless JWT authentication.
@@ -15,7 +15,7 @@ This project demonstrates a production-ready architecture, implementing security
 - **Documentation:** Interactive API documentation with **Swagger UI / OpenAPI 3**.
 - **Containerization:** Ready for deployment with **Docker**.
 
-## 🏗️ Architecture
+## Architecture
 
 The project follows a **Layered Architecture** to ensure separation of concerns, scalability, and testability.
 
@@ -28,7 +28,7 @@ The project follows a **Layered Architecture** to ensure separation of concerns,
 - **DTO:** Data Transfer Objects for optimized API responses.
 - **Security:** JWT filters and Authentication Providers.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 * **Language:** Java 21
 * **Framework:** Spring Boot 3.x
@@ -38,7 +38,7 @@ The project follows a **Layered Architecture** to ensure separation of concerns,
 * **Documentation:** SpringDoc OpenAPI
 * **Build Tool:** Maven
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Authentication
 | Method | Endpoint | Description | Access |
@@ -52,11 +52,13 @@ The project follows a **Layered Architecture** to ensure separation of concerns,
 ### Users
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/users` | List all users | Admin |
-| `GET` | `/api/users/{id}` | Get user details | Admin / Owner |
+| `GET` | `/api/user/all` | List all users | Admin |
+| `GET` | `/api/user/{id}` | Get user details | Admin / Owner |
+| `POST` | `/api/user/{id}` | Post to modify the user information | Admin / Owner |
+| `POST` | `/api/user/{id}` | Post to modify the user role | Admin |
 | `DELETE` | `/api/users/{id}` | Delete a user | Admin |
 
-## ⚙️ Local Setup
+## Local Setup
 
 1. **Clone the repo:**
    ```bash

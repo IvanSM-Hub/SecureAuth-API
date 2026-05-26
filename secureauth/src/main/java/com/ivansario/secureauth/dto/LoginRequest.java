@@ -15,12 +15,12 @@ import lombok.Setter;
 @Builder
 public class LoginRequest {
 
-    @NotBlank(message = "El username o mail es obligatorio")
-    @Size(min = 3, max = 100, message = "El username debe tener entre 3 y 100 caracteres")
+    @NotBlank(message = "Username or email is required")
+    @Size(min = 3, max = 100, message = "Username must be between 3 and 100 characters")
     private String username;
 
-    @NotBlank(message = "La contraseña es obligatoria")
-    @Size(min = 8, max = 255, message = "La contraseña debe tener entre 8 y 255 caracteres")
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, max = 255, message = "Password must be between 8 and 255 characters")
     private String password;
 
 }

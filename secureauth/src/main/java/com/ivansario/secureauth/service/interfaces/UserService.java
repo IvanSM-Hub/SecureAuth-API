@@ -3,6 +3,7 @@ package com.ivansario.secureauth.service.interfaces;
 import java.util.List;
 
 import com.ivansario.secureauth.dto.CreateUserRequest;
+import com.ivansario.secureauth.dto.UpdateUserRequest;
 import com.ivansario.secureauth.dto.UserResponse;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
@@ -15,5 +16,7 @@ public interface UserService {
     User updateUser(User user);
     boolean existsUser(String userKey);
     User changePassword(User user, String newPassword);
+    UserResponse getUserById(String userId);
+    UserResponse updateUser(String userId, UpdateUserRequest updateUser);
 
 }

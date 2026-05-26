@@ -14,9 +14,9 @@ import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Servicio para gestión de Refresh Tokens.
+ * Service for managing Refresh Tokens.
  *
- * Implementa creación, búsqueda, actualización y revocación de refresh tokens.
+ * Implements creation, retrieval, update and revocation of refresh tokens.
  */
 @Service
 @RequiredArgsConstructor
@@ -35,12 +35,12 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     /**
-     * Crea un nuevo {@link RefreshToken} asociado al usuario y lo persiste.
+     * Creates a new {@link RefreshToken} associated to the user and persists it.
      *
-     * @param user      usuario asociado al token
-     * @param ipAddress dirección IP desde la que se creó el token
-     * @param userAgent información del cliente
-     * @return el {@link RefreshToken} creado y persistido
+     * @param user      user associated to the token
+     * @param ipAddress IP address where the token was created
+     * @param userAgent client info
+     * @return the created and persisted {@link RefreshToken}
      */
 
     @Override
@@ -61,10 +61,10 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     /**
-     * Busca el refresh token por token.
+     * Finds the refresh token by token value.
      *
-     * @param token valor del refresh token
-     * @return el {@link RefreshToken} o {@code null} si no existe
+     * @param token token value
+     * @return the {@link RefreshToken} or {@code null} if not found
      */
     @Override
     public RefreshToken findByToken(String token) {
@@ -72,10 +72,10 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     /**
-     * Busca el refresh token por Usuario.
+     * Finds the refresh token by user.
      *
-     * @param user valor del refresh token
-     * @return el {@link RefreshToken} o {@code null} si no existe
+     * @param user user value
+     * @return the {@link RefreshToken} or {@code null} if not found
      */
     @Override
     public RefreshToken findByUser(User user) {
@@ -89,9 +89,9 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     /**
-     * Revoca todos los refresh tokens asociados a un usuario.
+     * Revokes all refresh tokens associated to a user.
      *
-     * @param user usuario cuyas tokens serán revocadas
+     * @param user user whose tokens will be revoked
      */
     @Override
     public void revokeAllTokensByUser(User user) {
