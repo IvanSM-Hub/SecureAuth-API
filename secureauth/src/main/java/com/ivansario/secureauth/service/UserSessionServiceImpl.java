@@ -81,4 +81,14 @@ public class UserSessionServiceImpl implements UserSessionService {
         return true;
     }
 
+    @Override
+    public boolean deleteByUser(User user) {
+        UserSession session = findByUser(user);
+        if (session != null) {
+            userSessionRepository.delete(session);
+            return true;
+        }
+        return false;
+    }
+
 }

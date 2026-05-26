@@ -122,4 +122,14 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
         return findByUser(user) != null;
     }
 
+    @Override
+    public boolean deleteByUser(User user) {
+        RefreshToken token = findByUser(user);
+        if (token != null) {
+            refreshTokenRepository.delete(token);
+            return true;
+        }
+        return false;
+    }
+
 }

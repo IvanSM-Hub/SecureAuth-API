@@ -312,6 +312,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
+    @Transactional
     public UserResponse activateUser(String userId) {
         
         UUID uuidUser = UUID.fromString(userId);
@@ -336,9 +337,23 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public UserResponse permanentlyDeleteUser(String userId) {
-        // TODO Auto-generated method stub
-        return null;
+    @Transactional
+    public boolean permanentlyDeleteUser(String userId) {
+
+        UUID uuidUser = UUID.fromString(userId);
+
+        User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + userId));
+
+        boolean sessionDeleted = userSessionService.deleteByUser(userFinded);
+        boolean tokenDeleted = refreshTokenService.deleteByUser(userFinded);
+        if (!sessionDeleted || !tokenDeleted) {
+            log.error("It can't be possible delete the user: " + userFinded.getEmail());
+            throw new IllegalStateException("It can't be possible delete the user: " + userFinded.getEmail());
+        }
+
+        userRepository.delete(userFinded);
+        
+        return true;
     }
 
 }

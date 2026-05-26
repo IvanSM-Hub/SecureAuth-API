@@ -275,4 +275,29 @@ class UserSessionServiceImplTest {
             assertThat(savedSession.getLastActivity()).isAfterOrEqualTo(beforeRevoke);
         }
     }
+
+    @Nested
+    class DeleteByUserTests {
+
+        @Test
+        void shouldDeleteSessionWhenExists() {
+            when(userSessionRepository.findByUser(user)).thenReturn(Optional.of(userSession));
+
+            boolean deleted = userSessionService.deleteByUser(user);
+
+            assertTrue(deleted);
+            verify(userSessionRepository).findByUser(user);
+            verify(userSessionRepository).delete(userSession);
+        }
+
+        @Test
+        void shouldReturnFalseWhenSessionDoesNotExist() {
+            when(userSessionRepository.findByUser(user)).thenReturn(Optional.empty());
+
+            boolean deleted = userSessionService.deleteByUser(user);
+
+            assertFalse(deleted);
+            verify(userSessionRepository).findByUser(user);
+        }
+    }
 }

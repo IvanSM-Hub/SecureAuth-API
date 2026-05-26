@@ -18,5 +18,6 @@ public interface RefreshTokenService {
     boolean delete(UUID id);
     RefreshToken updateToken(RefreshToken existingRefreshToken, String ipAddress, String userAgent);
     boolean existsRefreshTokenByUser(User user);
+    boolean deleteByUser(User user);
 
 }

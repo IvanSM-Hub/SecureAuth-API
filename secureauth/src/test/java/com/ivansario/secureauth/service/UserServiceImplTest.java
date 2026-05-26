@@ -28,11 +28,18 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ivansario.secureauth.dto.CreateUserRequest;
+import com.ivansario.secureauth.dto.UpdateUserRoleRequest;
 import com.ivansario.secureauth.dto.UserResponse;
+import com.ivansario.secureauth.entity.RefreshToken;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
+import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
+import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.repository.UserRepository;
+import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
+import com.ivansario.secureauth.service.interfaces.RoleService;
+import com.ivansario.secureauth.service.interfaces.UserSessionService;
 import com.ivansario.secureauth.util.RoleEnum;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -45,6 +52,15 @@ class UserServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private RoleService roleService;
+
+    @Mock
+    private UserSessionService userSessionService;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -394,6 +410,102 @@ class UserServiceImplTest {
             assertEquals(username, allUsers.get(0).getUsername());
         }
 
+    }
+
+    @Nested
+    class UpdateUserRoleTests {
+
+        @Test
+        void shouldUpdateUserRoleSuccessfully() {
+            UpdateUserRoleRequest updateRoleRequest = UpdateUserRoleRequest.builder()
+                .roleName(RoleEnum.ROLE_USER.name())
+                .build();
+
+            when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+            when(roleService.findByName(RoleEnum.ROLE_USER)).thenReturn(roleUser);
+
+            UserResponse response = userService.updateUserRole(testUser.getId().toString(), updateRoleRequest);
+
+            assertEquals(RoleEnum.ROLE_USER.name(), response.getRole());
+            assertSame(roleUser, testUser.getRole());
+            verify(userRepository).findById(testUser.getId());
+            verify(roleService).findByName(RoleEnum.ROLE_USER);
+            verify(userRepository).save(testUser);
+        }
+
+        @Test
+        void shouldThrowWhenUserNotFound() {
+            UpdateUserRoleRequest updateRoleRequest = UpdateUserRoleRequest.builder()
+                .roleName(RoleEnum.ROLE_USER.name())
+                .build();
+
+            when(userRepository.findById(testUser.getId())).thenReturn(Optional.empty());
+
+            assertThrows(
+                UserNotFoundException.class,
+                () -> userService.updateUserRole(testUser.getId().toString(), updateRoleRequest)
+            );
+
+            verify(userRepository).findById(testUser.getId());
+        }
+    }
+
+    @Nested
+    class VirtualDeleteUserTests {
+
+        @Test
+        void shouldDisableUserAndRevokeSessionAndToken() {
+            UserSession session = UserSession.builder()
+                .user(testUser)
+                .revoked(false)
+                .build();
+
+            RefreshToken token = RefreshToken.builder()
+                .user(testUser)
+                .revoked(false)
+                .build();
+
+            RefreshToken revokedToken = RefreshToken.builder()
+                .user(testUser)
+                .revoked(true)
+                .build();
+
+            when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+            when(userSessionService.findByUser(testUser)).thenReturn(session);
+            when(refreshTokenService.findByUser(testUser)).thenReturn(token);
+            when(refreshTokenService.revokeToken(token)).thenReturn(revokedToken);
+
+            UserResponse response = userService.virtualDeleteUser(testUser.getId().toString());
+
+            assertFalse(response.isActive());
+            assertFalse(testUser.isEnabled());
+            assertTrue(session.isRevoked());
+            assertTrue(revokedToken.isRevoked());
+            verify(userRepository).findById(testUser.getId());
+            verify(userSessionService).findByUser(testUser);
+            verify(refreshTokenService).findByUser(testUser);
+            verify(refreshTokenService).revokeToken(token);
+            verify(userRepository).save(testUser);
+        }
+    }
+
+    @Nested
+    class PermanentlyDeleteUserTests {
+
+        @Test
+        void shouldDeleteUserWhenSessionAndTokenDeleted() {
+            when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
+            when(userSessionService.deleteByUser(testUser)).thenReturn(true);
+            when(refreshTokenService.deleteByUser(testUser)).thenReturn(true);
+
+            boolean deleted = userService.permanentlyDeleteUser(testUser.getId().toString());
+
+            assertTrue(deleted);
+            verify(userRepository).findById(testUser.getId());
+            verify(userSessionService).deleteByUser(testUser);
+            verify(refreshTokenService).deleteByUser(testUser);
+            verify(userRepository).delete(testUser);
+        }
     }
 
 }

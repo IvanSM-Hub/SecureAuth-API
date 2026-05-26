@@ -269,4 +269,29 @@ class RefreshTokenServiceImplTest {
             verify(refreshTokenRepository).findByUser(user);
         }
     }
+
+    @Nested
+    class DeleteByUserTests {
+
+        @Test
+        void shouldDeleteRefreshTokenWhenExists() {
+            when(refreshTokenRepository.findByUser(user)).thenReturn(Optional.of(refreshToken));
+
+            boolean deleted = refreshTokenService.deleteByUser(user);
+
+            assertTrue(deleted);
+            verify(refreshTokenRepository).findByUser(user);
+            verify(refreshTokenRepository).delete(refreshToken);
+        }
+
+        @Test
+        void shouldReturnFalseWhenRefreshTokenDoesNotExist() {
+            when(refreshTokenRepository.findByUser(user)).thenReturn(Optional.empty());
+
+            boolean deleted = refreshTokenService.deleteByUser(user);
+
+            assertFalse(deleted);
+            verify(refreshTokenRepository).findByUser(user);
+        }
+    }
 }

@@ -22,6 +22,6 @@ public interface UserService {
     UserResponse updateUserRole(String userId, UpdateUserRoleRequest updateUser);
     UserResponse virtualDeleteUser(String userId);
     UserResponse activateUser(String userId);
-    UserResponse permanentlyDeleteUser(String userId);
+    boolean permanentlyDeleteUser(String userId);
 
 }

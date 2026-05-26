@@ -15,5 +15,6 @@ public interface UserSessionService {
     UserSession create(User user, RefreshToken refreshToken, String ipAddress, String UserAgent);
     UserSession update(UserSession session);
     boolean revokeSession(User user);
-    
+    boolean deleteByUser(User user);
+
 }

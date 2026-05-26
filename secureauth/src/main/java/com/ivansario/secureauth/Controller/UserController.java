@@ -120,14 +120,14 @@ public class UserController {
     @DeleteMapping("/permanentlyDelete/{userId}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-        summary = "Virtual delete a user",
+        summary = "Permanently delete a user",
         description = "Returns a user."
     )
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Virtual delete a user"),
+        @ApiResponse(responseCode = "200", description = "Permanently delete a user"),
         @ApiResponse(responseCode = "401", description = "Unauthorized access")
     })
-    public ResponseEntity<UserResponse> permanentlyDeleteUser(@PathVariable String userId) {
+    public ResponseEntity<Boolean> permanentlyDeleteUser(@PathVariable String userId) {
         return ResponseEntity.ok(userService.permanentlyDeleteUser(userId));
     }
 
