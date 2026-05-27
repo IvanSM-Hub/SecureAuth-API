@@ -5,35 +5,28 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import com.ivansario.secureauth.entity.User;
+import com.ivansario.secureauth.service.interfaces.UserService;
 
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
 @Component("userSecurity")
 public class UserSecurity {
 
+    private final UserService userService;
+
     public boolean isOwner(String userId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return false;
-
-        Object principal = auth.getPrincipal();
-
-        if (principal instanceof User) {
-            User user = (User) principal;
-            if (user.getId() != null && user.getId().toString().equals(userId)) {
-                return true;
-            }
-            return user.getUsername() != null && user.getUsername().equals(userId);
+        if (auth == null || auth.getName() == null || auth.getName().isBlank()) {
+            return false;
         }
 
-        if (principal instanceof org.springframework.security.core.userdetails.User) {
-            org.springframework.security.core.userdetails.User secUser = 
-            (org.springframework.security.core.userdetails.User) principal;
-            return secUser.getUsername().equals(userId);
+        try {
+            User authenticatedUser = userService.findUser(auth.getName());
+            return authenticatedUser.getId() != null && authenticatedUser.getId().toString().equals(userId);
+        } catch (Exception ex) {
+            return false;
         }
-
-        if (principal instanceof String) {
-            return principal.equals(userId);
-        }
-
-        return false;
     }
 
 }

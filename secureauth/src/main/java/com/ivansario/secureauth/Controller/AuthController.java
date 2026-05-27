@@ -16,6 +16,10 @@ import com.ivansario.secureauth.util.RoleEnum;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,13 +29,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 
 /**
- * Controlador REST para operaciones de autenticación.
+ * REST controller for authentication operations.
  * <p>
- * Expone endpoints para login, registro, cierre de sesión y renovación de tokens.
+ * Exposes endpoints for sign in, registration, sign out, and token refresh.
  * </p>
-*/
+ */
 @RestController
-@Tag(name = "SecureAuth_api", description = "Operaciones CRUD de authenticación y gestión de usuarios")
+@Tag(name = "Authentication", description = "Authentication, registration and token lifecycle operations")
 @RequiredArgsConstructor
 @RequestMapping(path = "/api/auth/")
 public class AuthController {
@@ -39,21 +43,51 @@ public class AuthController {
     private final AuthService authService;
 
     /**
-     * Endpoint POST /login - autentica al usuario y devuelve tokens.
+     * POST /login endpoint - authenticates the user and returns tokens.
      *
-     * @param loginRequest solicitud con credenciales (username, password)
-     * @param request HTTP servlet request (se usa para IP y User-Agent)
-     * @return ResponseEntity con {@link AuthResponse} que contiene access y refresh token
+     * @param loginRequest request with credentials (username, password)
+     * @param request HTTP servlet request used to capture IP and User-Agent
+     * @return ResponseEntity with {@link AuthResponse} containing the access and refresh tokens
      */
     @PostMapping("/login")
     @Operation(
-        summary = "Iniciar sesión",
-        description = "Autentica un usuario y devuelve access token, refresh token y datos básicos del perfil."
+        summary = "Sign in",
+        description = "Authenticates a user and returns an access token, refresh token, and basic profile data."
     )
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Autenticación exitosa"),
-        @ApiResponse(responseCode = "400", description = "Datos de login inválidos"),
-        @ApiResponse(responseCode = "401", description = "Credenciales incorrectas")
+                @ApiResponse(
+                        responseCode = "200",
+                description = "Authentication successful",
+                        content = @Content(schema = @Schema(implementation = AuthResponse.class))
+                ),
+                @ApiResponse(
+                        responseCode = "400",
+                description = "Invalid login data",
+                        content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                                {
+                                    "timestamp": "2026-05-27T10:15:30",
+                                    "status": 400,
+                                    "error": "Bad Request",
+                                    "message": "Validation failed",
+                                    "errors": {
+                                        "username": "Username or email is required",
+                                        "password": "Password is required"
+                                    }
+                                }
+                                """))
+                ),
+                @ApiResponse(
+                        responseCode = "401",
+                    description = "Invalid credentials",
+                        content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                                {
+                                    "timestamp": "2026-05-27T10:15:30",
+                                    "status": 401,
+                                    "error": "Unauthorized",
+                                    "message": "Invalid credentials"
+                                }
+                                """))
+                )
     })
     public ResponseEntity<AuthResponse> login(
         @Valid @RequestBody 
@@ -66,21 +100,51 @@ public class AuthController {
     }
 
     /**
-     * Endpoint POST /register - registra un nuevo usuario con rol USER.
+     * POST /register endpoint - creates a new user with the USER role.
      *
-     * @param requestCreateUser datos para crear el usuario
-     * @param request HTTP servlet request (se usa para IP y User-Agent)
-     * @return ResponseEntity con {@link RegisterResponse} con información del nuevo usuario
+     * @param requestCreateUser user creation data
+     * @param request HTTP servlet request used to capture IP and User-Agent
+     * @return ResponseEntity with {@link RegisterResponse} containing the new user's information
      */
     @PostMapping("/register")
     @Operation(
-        summary = "Registrar usuario",
-        description = "Crea un nuevo usuario con el rol ROLE_USER y devuelve los datos registrados."
+        summary = "Register user",
+        description = "Creates a new user with the ROLE_USER role and returns the registered data."
     )
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Usuario registrado correctamente"),
-        @ApiResponse(responseCode = "400", description = "Datos de registro inválidos"),
-        @ApiResponse(responseCode = "409", description = "El usuario ya existe")
+                @ApiResponse(
+                        responseCode = "200",
+                description = "User registered successfully",
+                        content = @Content(schema = @Schema(implementation = RegisterResponse.class))
+                ),
+                @ApiResponse(
+                        responseCode = "400",
+                description = "Invalid registration data",
+                        content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                                {
+                                    "timestamp": "2026-05-27T10:15:30",
+                                    "status": 400,
+                                    "error": "Bad Request",
+                                    "message": "Validation failed",
+                                    "errors": {
+                                        "email": "Email is required",
+                                        "password": "Password must be between 8 and 255 characters"
+                                    }
+                                }
+                                """))
+                ),
+                @ApiResponse(
+                        responseCode = "409",
+                    description = "User already exists",
+                        content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                                {
+                                    "timestamp": "2026-05-27T10:15:30",
+                                    "status": 409,
+                                    "error": "Conflict",
+                                    "message": "User already exists"
+                                }
+                                """))
+                )
     })
     public ResponseEntity<RegisterResponse> registerUser(
         @Valid @RequestBody 
@@ -98,20 +162,43 @@ public class AuthController {
     }
     
     /**
-     * Endpoint POST /logout - invalida un refresh token y revoca la sesión.
+     * POST /logout endpoint - invalidates a refresh token and revokes the session.
      *
-     * @param request petición que contiene el refresh token a revocar
-     * @return ResponseEntity vacío con código 204 cuando se revoca correctamente
+     * @param request request containing the refresh token to revoke
+     * @return empty ResponseEntity with status 204 when the operation succeeds
      */
     @PostMapping("/logout")
     @Operation(
-        summary = "Cerrar sesión",
-        description = "Revoca el refresh token proporcionado y marca la sesión del usuario como revocada."
+        summary = "Sign out",
+        description = "Revokes the provided refresh token and marks the user's session as revoked."
     )
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
-        @ApiResponse(responseCode = "204", description = "Sesión cerrada correctamente"),
-        @ApiResponse(responseCode = "400", description = "Refresh token inválido"),
-        @ApiResponse(responseCode = "401", description = "No autenticado")
+        @ApiResponse(responseCode = "204", description = "Session closed successfully"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid refresh token",
+            content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                {
+                  "timestamp": "2026-05-27T10:15:30",
+                  "status": 400,
+                  "error": "Bad Request",
+                  "message": "Invalid refresh token"
+                }
+                """))
+        ),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized",
+            content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                {
+                  "timestamp": "2026-05-27T10:15:30",
+                  "status": 401,
+                  "error": "Unauthorized",
+                  "message": "Unauthorized"
+                }
+                """))
+        )
     })
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
         authService.logout(request);
@@ -119,21 +206,48 @@ public class AuthController {
     }
 
     /**
-     * Endpoint POST /refresh - renueva access y refresh tokens dado un refresh token válido.
+     * POST /refresh endpoint - renews access and refresh tokens using a valid refresh token.
      *
-     * @param refreshTokenRequest petición con el refresh token actual
-     * @param request HTTP servlet request (se usa para IP y User-Agent)
-     * @return ResponseEntity con {@link AuthResponse} que contiene los nuevos tokens
+     * @param refreshTokenRequest request containing the current refresh token
+     * @param request HTTP servlet request used to capture IP and User-Agent
+     * @return ResponseEntity with {@link AuthResponse} containing the new tokens
      */
     @PostMapping("/refresh")
     @Operation(
-        summary = "Renovar tokens",
-        description = "Intercambia un refresh token válido por un nuevo access token y refresh token."
+        summary = "Refresh tokens",
+        description = "Exchanges a valid refresh token for a new access token and refresh token."
     )
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Tokens renovados correctamente"),
-        @ApiResponse(responseCode = "400", description = "Refresh token inválido o expirado"),
-        @ApiResponse(responseCode = "401", description = "No autenticado")
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tokens renovados correctamente",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid or expired refresh token",
+            content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                {
+                  "timestamp": "2026-05-27T10:15:30",
+                  "status": 400,
+                  "error": "Bad Request",
+                  "message": "Invalid refresh token"
+                }
+                """))
+        ),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized",
+            content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                {
+                  "timestamp": "2026-05-27T10:15:30",
+                  "status": 401,
+                  "error": "Unauthorized",
+                  "message": "Unauthorized"
+                }
+                """))
+        )
     })
     public ResponseEntity<AuthResponse> refreshToken(
         @Valid @RequestBody 
@@ -147,13 +261,43 @@ public class AuthController {
 
     @PostMapping("/newPassword")
     @Operation(
-        summary = "Cambiar contraseña",
-        description = "Actualiza la contraseña del usuario autenticado y devuelve tokens renovados."
+        summary = "Change password",
+        description = "Updates the authenticated user's password and returns renewed tokens."
     )
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Contraseña actualizada correctamente"),
-        @ApiResponse(responseCode = "400", description = "Datos de cambio de contraseña inválidos"),
-        @ApiResponse(responseCode = "401", description = "No autenticado")
+                @ApiResponse(
+                        responseCode = "200",
+                    description = "Password updated successfully",
+                        content = @Content(schema = @Schema(implementation = AuthResponse.class))
+                ),
+                @ApiResponse(
+                        responseCode = "400",
+                    description = "Invalid password change data",
+                        content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                                {
+                                    "timestamp": "2026-05-27T10:15:30",
+                                    "status": 400,
+                                    "error": "Bad Request",
+                                    "message": "Validation failed",
+                                    "errors": {
+                                        "confirmationPassword": "Password confirmation is required"
+                                    }
+                                }
+                                """))
+                ),
+                @ApiResponse(
+                        responseCode = "401",
+                    description = "Unauthorized",
+                        content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                                {
+                                    "timestamp": "2026-05-27T10:15:30",
+                                    "status": 401,
+                                    "error": "Unauthorized",
+                                    "message": "Unauthorized"
+                                }
+                                """))
+                )
     })
     public ResponseEntity<AuthResponse> changePassword(
         @Valid @RequestBody

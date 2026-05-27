@@ -2,6 +2,7 @@ package com.ivansario.secureauth.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.hibernate.validator.internal.constraintvalidators.bv.EmailValidator;
@@ -24,6 +25,7 @@ import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
 import com.ivansario.secureauth.exception.RefreshTokenRevokedException;
 import com.ivansario.secureauth.exception.SessionRevokeException;
+import com.ivansario.secureauth.exception.UserExistsException;
 import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.repository.UserRepository;
 import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
@@ -151,7 +153,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             throw new InvalidCredentialsException("The password could not be updated correctly for the user: " + userNewPassword.getSurname());
         }
 
-        return userRepository.save(user);
+        return userNewPassword;
     }
 
     @Override
@@ -214,6 +216,18 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         }
 
         if (updatedUsername != null && !updatedUsername.isBlank()) {
+            EmailValidator emailValidator = new EmailValidator();
+            boolean isEmail = emailValidator.isValid(updatedUsername, null);
+            if (isEmail) {
+                log.error("The username provided is a email and is not posible to update");
+                throw new IllegalArgumentException("The username provided is a email and is not posible to update");
+            }
+
+            Optional<User> existingUser = userRepository.findByUsername(updatedUsername.trim());
+            if (existingUser.isPresent() && !existingUser.get().getId().equals(uuidUser)) {
+                throw new UserExistsException("The username provided is in use by another user");
+            }
+
             userFinded.setUsername(updatedUsername.trim());
         }
         if (updatedName != null && !updatedName.isBlank()) {

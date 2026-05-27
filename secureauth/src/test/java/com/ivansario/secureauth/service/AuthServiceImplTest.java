@@ -28,6 +28,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ivansario.secureauth.dto.AuthResponse;
 import com.ivansario.secureauth.dto.CreateUserRequest;
@@ -79,6 +80,9 @@ class AuthServiceImplTest {
 
     @Mock
     private UserDetails userDetails;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -147,6 +151,7 @@ class AuthServiceImplTest {
 
         when(userDetails.getUsername()).thenReturn(username);
         when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userService.findUser(email)).thenReturn(user);
     }
 
     @Nested
@@ -534,9 +539,10 @@ class AuthServiceImplTest {
         void shouldChangePasswordSuccessfully() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, password, newPassword, confirmPassword);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
+            when(passwordEncoder.matches(password, passwordHash)).thenReturn(true);
             when(userService.changePassword(user, newPassword)).thenReturn(user);
             when(authManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
@@ -559,7 +565,10 @@ class AuthServiceImplTest {
         void shouldThrowInvalidConfirmationPasswordExceptionWhenPasswordsDoNotMatch() {
             String newPassword = "newPassword123";
             String confirmPassword = "differentPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, password, newPassword, confirmPassword);
+
+            when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
+            when(passwordEncoder.matches(password, passwordHash)).thenReturn(true);
 
             assertThrows(InvalidConfirmationPasswordException.class,
                 () -> authService.changePassword(changeRequest, ipAddress, userAgent));
@@ -570,7 +579,7 @@ class AuthServiceImplTest {
         void shouldThrowRefreshTokenExpiredExceptionWhenTokenIsExpired() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, password, newPassword, confirmPassword);
             refreshToken.setExpiryDate(LocalDateTime.now().minusDays(1));
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
@@ -583,7 +592,7 @@ class AuthServiceImplTest {
         void shouldThrowRefreshTokenExpiredExceptionWhenTokenIsNull() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, password, newPassword, confirmPassword);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(null);
 
@@ -595,9 +604,10 @@ class AuthServiceImplTest {
         void shouldThrowInvalidCredentialsExceptionWhenAuthenticationFails() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, password, newPassword, confirmPassword);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
+            when(passwordEncoder.matches(password, passwordHash)).thenReturn(true);
             when(userService.changePassword(user, newPassword)).thenReturn(user);
             when(authManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new AuthenticationException("Auth failed") {});
@@ -610,9 +620,10 @@ class AuthServiceImplTest {
         void shouldThrowTokenGenerationExceptionOnJwtError() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, password, newPassword, confirmPassword);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
+            when(passwordEncoder.matches(password, passwordHash)).thenReturn(true);
             when(userService.changePassword(user, newPassword)).thenReturn(user);
             when(authManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
@@ -626,9 +637,10 @@ class AuthServiceImplTest {
         void shouldReturnValidTokensAfterPasswordChange() {
             String newPassword = "newPassword123";
             String confirmPassword = "newPassword123";
-            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, newPassword, confirmPassword);
+            NewPasswordUserRequest changeRequest = new NewPasswordUserRequest(refreshTokenValue, password, newPassword, confirmPassword);
 
             when(refreshTokenService.findByToken(refreshTokenValue)).thenReturn(refreshToken);
+            when(passwordEncoder.matches(password, passwordHash)).thenReturn(true);
             when(userService.changePassword(user, newPassword)).thenReturn(user);
             when(authManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);

@@ -7,6 +7,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.ivansario.secureauth.dto.AuthResponse;
@@ -51,6 +52,7 @@ import jakarta.transaction.Transactional;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authManager;
     private final JwtUtil jwtUtil;
 
@@ -212,38 +214,41 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse changePassword(
-            NewPasswordUserRequest request, 
-            String ipAddress, 
-            String userAgent) {
+        NewPasswordUserRequest request, 
+        String ipAddress, 
+        String userAgent
+    ) {
 
-        String pass1 = request.getNewPassword();
-        String pass2 = request.getConfirmPassword();
+        String token = request.getToken();
+        String currentPass = request.getCurrentPassword();
+        String newPass = request.getNewPassword();
+        String confirmPass = request.getConfirmPassword();
 
-        if (!pass1.equals(pass2)) { 
+        RefreshToken refreshToken = refreshTokenService.findByToken(token);
+        if (refreshToken == null || refreshToken.isExpired() || refreshToken.isRevoked()) {
+            throw new RefreshTokenExpiredException("Refresh token not exists or it's expired or has been revoked");
+        }
+
+        User user = userService.findUser(refreshToken.getUser().getEmail());
+        if (!user.isEnabled()) {
+            throw new UserNotFoundException("User not found: " + refreshToken.getUser().getEmail());
+        }
+
+        if (!passwordEncoder.matches(currentPass, user.getPassword())) {
+            throw new InvalidConfirmationPasswordException("The current password is not valid");
+        }
+        if (!newPass.equals(confirmPass)) {
             throw new InvalidConfirmationPasswordException("The provided passwords are not valid");
         }
 
-        String token = request.getToken();
+        User userNewPassword = userService.changePassword(user, newPass);
+        Authentication authentication = authenticate(userNewPassword.getUsername(), newPass);
 
-        RefreshToken refreshToken = refreshTokenService.findByToken(token);
-        if (refreshToken == null || refreshToken.isExpired()) {
-            throw new RefreshTokenExpiredException("Refresh token expired");
-        }
-
-        if (userService.existsUser(refreshToken.getUser().getEmail())) {
-            throw new UserNotFoundException("Email already registered");
-        }
-
-        User userNewPassword = userService.changePassword(refreshToken.getUser(), pass1);
-        validateCreatedEntity(userNewPassword, "User");
-
-        Authentication authentication = authenticate(userNewPassword.getUsername(), userNewPassword.getPassword());
-
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        UserDetails newUserDetails = (UserDetails) authentication.getPrincipal();
 
         String accessToken;
         try {
-            accessToken = jwtUtil.generateToken(userDetails);
+            accessToken = jwtUtil.generateToken(newUserDetails);
         } catch (Exception e) {
             throw new TokenGenerationException("Failed to generate access token", e);
         }

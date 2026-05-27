@@ -23,7 +23,4 @@ public class UpdateUserProfileRequest {
     @Size(max = 255, message = "Surname cannot exceed 255 characters")
     private String surname;
 
-    @Size(max=20, message="Role cannot exceed 20 characters")
-    private String roleName;
-
 }

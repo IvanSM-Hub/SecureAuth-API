@@ -40,23 +40,55 @@ The project follows a **Layered Architecture** to ensure separation of concerns,
 
 ## API Endpoints
 
+All endpoints are grouped under `/api/auth/` and `/api/user/`.
+
 ### Authentication
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/auth/register` | Register a new user | Public |
 | `POST` | `/api/auth/login` | Login and get JWT token | Public |
-| `POST` | `/api/auth/logout` | Invalidates the JWT token and session too | Private |
-| `POST` | `/api/auth/refresh` | Refresh the JWT token from the user and keeps the session valitade | Private |
-| `POST` | `/api/auth/newPassword` | The user can change the password, if he had the token from his session | Private |
+| `POST` | `/api/auth/logout` | Invalidates the refresh token and revokes the session | Authenticated |
+| `POST` | `/api/auth/refresh` | Refreshes access and refresh tokens using a valid refresh token | Authenticated |
+| `POST` | `/api/auth/newPassword` | Changes the password of the authenticated user and returns renewed tokens | Authenticated |
 
 ### Users
 | Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/user/all` | List all users | Admin |
-| `GET` | `/api/user/{id}` | Get user details | Admin / Owner |
-| `PUT` | `/api/user/{id}` | Post to modify the user information | Admin / Owner |
-| `PUT` | `/api/user/{id}` | Post to modify the user role | Admin |
-| `DELETE` | `/api/users/{id}` | Delete a user | Admin |
+| `GET` | `/api/user/{userId}` | Get user details | Admin |
+| `PUT` | `/api/user/update/{userId}` | Update user profile information | Admin / Owner |
+| `PUT` | `/api/user/role/{userId}` | Update a user's role | Admin |
+| `PUT` | `/api/user/delete/{userId}` | Perform a virtual delete (soft delete) | Admin / Owner |
+| `PUT` | `/api/user/active/{userId}` | Reactivate a user | Admin |
+| `DELETE` | `/api/user/permanentlyDelete/{userId}` | Permanently delete a user | Admin |
+
+## Validation Rules
+
+The API uses Bean Validation for request payloads. The most relevant rules are:
+
+### Authentication Requests
+| DTO | Field | Validation |
+| :--- | :--- | :--- |
+| `LoginRequest` | `username` | Required. Minimum 3 characters, maximum 100. The service accepts username or email in this field. |
+| `LoginRequest` | `password` | Required. Minimum 8 characters, maximum 255. |
+| `CreateUserRequest` | `email` | Required and must be a valid email address. |
+| `CreateUserRequest` | `username` | Required. Minimum 3 characters, maximum 100. |
+| `CreateUserRequest` | `name` | Optional. Maximum 255 characters. |
+| `CreateUserRequest` | `surname` | Optional. Maximum 255 characters. |
+| `CreateUserRequest` | `password` | Required. Minimum 8 characters, maximum 255. |
+| `NewPasswordUserRequest` | `token` | Required. Minimum 20 characters, maximum 500. This is the refresh token used to authorize the password change. |
+| `NewPasswordUserRequest` | `newPassword` | Required. Minimum 8 characters, maximum 255. |
+| `NewPasswordUserRequest` | `confirmPassword` | Required. Minimum 8 characters, maximum 255. Must match `newPassword`. |
+
+### User Management Requests
+| DTO | Field | Validation |
+| :--- | :--- | :--- |
+| `UpdateUserProfileRequest` | `username` | Optional. Minimum 3 characters, maximum 100. |
+| `UpdateUserProfileRequest` | `name` | Optional. Maximum 255 characters. |
+| `UpdateUserProfileRequest` | `surname` | Optional. Maximum 255 characters. |
+| `UpdateUserRoleRequest` | `roleName` | Validation only checks length, maximum 20 characters. The endpoint expects a role name to perform the update. |
+
+Validation errors return a standard JSON payload with `timestamp`, `status`, `error`, `message`, and, when applicable, an `errors` object with field-level messages.
 
 ## Local Setup
 
