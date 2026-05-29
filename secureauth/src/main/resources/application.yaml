@@ -1,4 +1,7 @@
 spring:
+  profiles:
+    active:
+    - dev
   config:
     import:
     - optional:file:../.env[.properties]
@@ -6,7 +9,7 @@ spring:
     name: secureauth
   sql:
     init:
-      mode: never
+      mode: always
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT}/${POSTGRES_DB}
     username: ${POSTGRES_USER}
@@ -20,12 +23,15 @@ spring:
         "[format_sql]": true
     show-sql: false
     open-in-view: false
+    defer-datasource-initialization: true
+  
 springdoc:
   swagger-ui:
     enabled: true
   api-docs:
     enabled: true
   show-actuator: true
+  
 logging:
   level:
     "[org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer]": ERROR

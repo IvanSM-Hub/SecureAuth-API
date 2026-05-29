@@ -11,7 +11,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.ivansario.secureauth.dto.CreateUserRequest;
@@ -25,9 +24,11 @@ import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
 import com.ivansario.secureauth.exception.RefreshTokenRevokedException;
 import com.ivansario.secureauth.exception.SessionRevokeException;
+import com.ivansario.secureauth.exception.UserCreationException;
 import com.ivansario.secureauth.exception.UserExistsException;
 import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.repository.UserRepository;
+import com.ivansario.secureauth.service.interfaces.PasswordSecurityService;
 import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
 import com.ivansario.secureauth.service.interfaces.RoleService;
 import com.ivansario.secureauth.service.interfaces.UserService;
@@ -44,7 +45,7 @@ import lombok.extern.slf4j.Slf4j;
 public class UserServiceImpl implements UserService, UserDetailsService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordSecurityService passwordSecurityService;
     private final RoleService roleService;
     private final UserSessionService userSessionService;
     private final RefreshTokenService refreshTokenService;
@@ -87,17 +88,23 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     public User createUser(CreateUserRequest createUserRequest, Role role) {
+        try {
+            
+            User user = User.builder()
+            .username(createUserRequest.getUsername())
+            .name(createUserRequest.getName())
+            .surname(createUserRequest.getSurname())
+            .email(createUserRequest.getEmail())
+            .passwordHash(passwordSecurityService.encryptPassword(createUserRequest.getPassword()))
+            .role(role)
+            .build();
+    
+            return userRepository.save(user);
 
-        User user = User.builder()
-        .username(createUserRequest.getUsername())
-        .name(createUserRequest.getName())
-        .surname(createUserRequest.getSurname())
-        .email(createUserRequest.getEmail())
-        .passwordHash(passwordEncoder.encode(createUserRequest.getPassword()))
-        .role(role)
-        .build();
-
-        return userRepository.save(user);
+        } catch (Exception e) {
+            log.error("It can't be possible to registrate the user.");
+            throw new UserCreationException("It can't be possible to registrate the user.");
+        }
 
     }
 
@@ -139,17 +146,17 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         
         String oldEncryptPassword = user.getPassword();
         
-        if (passwordEncoder.matches(newPassword, oldEncryptPassword)) {
+        if (passwordSecurityService.matches(newPassword, oldEncryptPassword)) {
             throw new InvalidCredentialsException("The password you want to modify must be different from the existing one");
         }
 
-        String encryptNewPassword = passwordEncoder.encode(newPassword);
+        String encryptNewPassword = passwordSecurityService.encryptPassword(newPassword);
 
         user.setPasswordHash(encryptNewPassword);
 
         User userNewPassword = userRepository.save(user);
 
-        if (!passwordEncoder.matches(newPassword, userNewPassword.getPasswordHash())) {
+        if (!passwordSecurityService.matches(newPassword, userNewPassword.getPasswordHash())) {
             throw new InvalidCredentialsException("The password could not be updated correctly for the user: " + userNewPassword.getSurname());
         }
 

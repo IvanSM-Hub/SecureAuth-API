@@ -130,6 +130,25 @@ class AuthControllerITest {
                 .andExpect(jsonPath("$.role").value("ROLE_USER"));
     }
 
+        @Test
+        void registerShouldRejectWeakPassword() throws Exception {
+                CreateUserRequest weakPasswordRequest = CreateUserRequest.builder()
+                                .email("ivan@example.com")
+                                .username("ivan.sario")
+                                .name("Ivan")
+                                .surname("Sario")
+                                .password("Password1!")
+                                .build();
+
+                mockMvc.perform(post("/api/auth/register")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .header("User-Agent", "JUnit")
+                                                .content(objectMapper.writeValueAsString(weakPasswordRequest)))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.message").value("Validation failed"))
+                                .andExpect(jsonPath("$.errors.password").value("Password must be between 12 and 128 characters"));
+        }
+
     @Test
     void logoutShouldReturnNoContent() throws Exception {
         doNothing().when(authService).logout(any(RefreshTokenRequest.class));
