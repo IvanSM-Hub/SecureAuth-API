@@ -12,7 +12,6 @@ import com.ivansario.secureauth.entity.UserProtection;
 import com.ivansario.secureauth.exception.UserProtectionException;
 import com.ivansario.secureauth.repository.UserProtectionRepository;
 import com.ivansario.secureauth.service.interfaces.UserProtectionService;
-import com.ivansario.secureauth.service.interfaces.UserService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,6 +27,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         if (ip.isEmpty() || duration.isNegative()) {
             throw new UserProtectionException("Somthing was wrong on attemption of loging");
         }
+        
 
     }
 
