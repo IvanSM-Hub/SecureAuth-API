@@ -24,8 +24,25 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
+  redis:
+    container_name: redis
+    image: redis:7.2
+    restart: unless-stopped
+    ports:
+    - "6379:6379"
+    volumes:
+    - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
 volumes:
   postgres_data:
     external: false
   pgadmin_data:
     external: false
+  redis_data:
+    driver: local

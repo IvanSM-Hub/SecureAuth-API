@@ -1,5 +1,7 @@
 package com.ivansario.secureauth.dto;
 
+import com.ivansario.secureauth.validation.InitialAdminPassword;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -20,7 +22,9 @@ public class LoginRequest {
     private String username;
 
     @NotBlank(message = "Password is required")
-    @Size(min = 8, max = 255, message = "Password must be between 8 and 255 characters")
+    @Size(min = 8, max = 255, message = "Password must be between 8 and 255 characters",
+        groups = InitialAdminPassword.class
+    )
     private String password;
 
 }

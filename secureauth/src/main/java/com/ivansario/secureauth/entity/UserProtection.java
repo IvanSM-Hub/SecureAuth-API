@@ -52,7 +52,7 @@ public class UserProtection {
     protected void onCreate() {
         if (lastTry == null) lastTry = LocalDateTime.now();
         if (bloquedAt == null) bloquedAt = null;
-        active = true;
+        active = bloquedAt != null && bloquedAt.isAfter(LocalDateTime.now());
     }
 
     @PreUpdate

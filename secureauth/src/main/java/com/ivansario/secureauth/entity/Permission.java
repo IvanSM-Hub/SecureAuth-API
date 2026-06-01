@@ -28,7 +28,7 @@ public class Permission {
     private UUID id;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, unique = true, length = 100)
     private PermissionEnum name;
 
     @Column(nullable = true, length = 255)

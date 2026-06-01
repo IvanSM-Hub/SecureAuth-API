@@ -22,7 +22,7 @@ import com.ivansario.secureauth.dto.UserResponse;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.exception.GlobalExceptionHandler;
-import com.ivansario.secureauth.service.UserServiceImpl;
+import com.ivansario.secureauth.service.interfaces.UserService;
 import com.ivansario.secureauth.util.RoleEnum;
 
 import tools.jackson.databind.json.JsonMapper;
@@ -41,7 +41,7 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 class UserControllerITest {
 
     @Mock
-    private UserServiceImpl userService;
+    private UserService userService;
 
     private MockMvc mockMvc;
     private final JsonMapper objectMapper = JsonMapper.builder().findAndAddModules().build();

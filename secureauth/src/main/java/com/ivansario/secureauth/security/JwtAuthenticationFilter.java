@@ -14,8 +14,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.ivansario.secureauth.entity.RefreshToken;
 import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.entity.UserSession;
-import com.ivansario.secureauth.service.UserServiceImpl;
 import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
+import com.ivansario.secureauth.service.interfaces.UserService;
 import com.ivansario.secureauth.service.interfaces.UserSessionService;
 
 import jakarta.servlet.FilterChain;
@@ -38,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final UserServiceImpl userService;
+    private final UserService userService;
     private final UserSessionService userSessionService;
     private final RefreshTokenService refreshTokenService;
 

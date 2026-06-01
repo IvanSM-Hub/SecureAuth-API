@@ -2,6 +2,7 @@ package com.ivansario.secureauth.service.interfaces;
 
 import com.ivansario.secureauth.dto.AuthResponse;
 import com.ivansario.secureauth.dto.CreateUserRequest;
+import com.ivansario.secureauth.dto.InitialAdminLoginRequest;
 import com.ivansario.secureauth.dto.LoginRequest;
 import com.ivansario.secureauth.dto.NewPasswordUserRequest;
 import com.ivansario.secureauth.dto.RefreshTokenRequest;
@@ -12,6 +13,7 @@ public interface AuthService {
 
     RegisterResponse register(CreateUserRequest request, String ipAddress, String userAgent, RoleEnum roleEnum);
     AuthResponse login(LoginRequest request, String ipAddress, String userAgent);
+    AuthResponse initialAdminLogin(InitialAdminLoginRequest request, String ipAddress, String userAgent);
     AuthResponse refreshToken(RefreshTokenRequest refreshTokenRequest, String ipAddress, String userAgent);
     void logout(RefreshTokenRequest logoutRefreshToken);
     AuthResponse changePassword(NewPasswordUserRequest request, String ipAddress, String userAgent);

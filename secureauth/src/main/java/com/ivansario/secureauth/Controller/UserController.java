@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ivansario.secureauth.dto.UpdateUserProfileRequest;
 import com.ivansario.secureauth.dto.UpdateUserRoleRequest;
 import com.ivansario.secureauth.dto.UserResponse;
-import com.ivansario.secureauth.service.UserServiceImpl;
+import com.ivansario.secureauth.service.interfaces.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -38,7 +38,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
-    private final UserServiceImpl userService;
+    private final UserService userService;
 
     @GetMapping("/all")
     @PreAuthorize(value = "hasRole('ADMIN')")

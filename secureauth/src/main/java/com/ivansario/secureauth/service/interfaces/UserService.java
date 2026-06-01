@@ -2,6 +2,8 @@ package com.ivansario.secureauth.service.interfaces;
 
 import java.util.List;
 
+import org.springframework.security.core.userdetails.UserDetailsService;
+
 import com.ivansario.secureauth.dto.CreateUserRequest;
 import com.ivansario.secureauth.dto.UpdateUserProfileRequest;
 import com.ivansario.secureauth.dto.UpdateUserRoleRequest;
@@ -9,7 +11,7 @@ import com.ivansario.secureauth.dto.UserResponse;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
 
-public interface UserService {
+public interface UserService extends UserDetailsService {
 
     User findUser(String userKey);
     List<UserResponse> getAllUsers();

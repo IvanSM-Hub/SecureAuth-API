@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import com.ivansario.secureauth.dto.AuthResponse;
 import com.ivansario.secureauth.dto.CreateUserRequest;
+import com.ivansario.secureauth.dto.InitialAdminLoginRequest;
 import com.ivansario.secureauth.dto.LoginRequest;
 import com.ivansario.secureauth.dto.NewPasswordUserRequest;
 import com.ivansario.secureauth.dto.RefreshTokenRequest;
@@ -97,6 +98,68 @@ public class AuthController {
         String ipAddress = request.getRemoteAddr();
         String userAgent = request.getHeader("User-Agent");
         return ResponseEntity.ok(authService.login(loginRequest, ipAddress, userAgent));
+    }
+
+    /**
+     * POST /admin-init endpoint - authenticates the initial admin user setup.
+     *
+     * This endpoint is intended ONLY for the initial bootstrap of the system
+     * or controlled administrative initialization scenarios.
+     *
+     * It allows authentication of the initial admin user even when relaxed
+     * password constraints are applied during system setup.
+     *
+     * @param loginRequest request with credentials (username, password)
+     * @param request      HTTP servlet request used to capture IP and User-Agent
+     * @return ResponseEntity with {@link AuthResponse} containing the access and
+     *         refresh tokens
+     */
+    @PostMapping("/admin-init")
+    @Operation(summary = "Initial admin authentication", description = """
+            Authenticates the initial administrator user during system bootstrap.
+
+            This endpoint is intended for first-time setup only and should NOT be exposed
+            in normal production authentication flows.
+
+            It returns an access token, refresh token, and basic profile data for the admin user.
+            """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Initial admin authentication successful", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid login data", content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                        {
+                            "timestamp": "2026-05-27T10:15:30",
+                            "status": 400,
+                            "error": "Bad Request",
+                            "message": "Validation failed",
+                            "errors": {
+                                "username": "Username or email is required",
+                                "password": "Password is required"
+                            }
+                        }
+                    """))),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials", content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                        {
+                            "timestamp": "2026-05-27T10:15:30",
+                            "status": 401,
+                            "error": "Unauthorized",
+                            "message": "Invalid credentials"
+                        }
+                    """))),
+            @ApiResponse(responseCode = "403", description = "Forbidden - endpoint not allowed in production context", content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                        {
+                            "timestamp": "2026-05-27T10:15:30",
+                            "status": 403,
+                            "error": "Forbidden",
+                            "message": "Admin initialization endpoint is disabled or not allowed"
+                        }
+                    """)))
+    })
+    public ResponseEntity<AuthResponse> initialAdminLogin(
+            @Valid @RequestBody InitialAdminLoginRequest loginRequest,
+            HttpServletRequest request) {
+        String ipAddress = request.getRemoteAddr();
+        String userAgent = request.getHeader("User-Agent");
+        return ResponseEntity.ok(authService.initialAdminLogin(loginRequest, ipAddress, userAgent));
     }
 
     /**

@@ -25,7 +25,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.ivansario.secureauth.dto.CreateUserRequest;
 import com.ivansario.secureauth.dto.UpdateUserRoleRequest;
@@ -37,6 +36,7 @@ import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
 import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.repository.UserRepository;
+import com.ivansario.secureauth.service.interfaces.PasswordSecurityService;
 import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
 import com.ivansario.secureauth.service.interfaces.RoleService;
 import com.ivansario.secureauth.service.interfaces.UserSessionService;
@@ -51,7 +51,7 @@ class UserServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
-    private PasswordEncoder passwordEncoder;
+    private PasswordSecurityService passwordSecurityService;
 
     @Mock
     private RoleService roleService;
@@ -155,7 +155,7 @@ class UserServiceImplTest {
         void shouldCreateUserSuccessfully() {
             UUID generatedId = UUID.randomUUID();
 
-            when(passwordEncoder.encode(password)).thenReturn(hashedPassword);
+            when(passwordSecurityService.encryptPassword(password)).thenReturn(hashedPassword);
             when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
                 User userToPersist = invocation.getArgument(0);
                 userToPersist.setId(generatedId);
@@ -171,7 +171,7 @@ class UserServiceImplTest {
             assertEquals(hashedPassword, userCreated.getPasswordHash());
             assertEquals(roleAdmin, userCreated.getRole());
             assertEquals(generatedId, userCreated.getId());
-            verify(passwordEncoder).encode(password);
+            verify(passwordSecurityService).encryptPassword(password);
             verify(userRepository).save(any(User.class));
             assertThat(userCreated.getId()).isNotNull();
         }
@@ -338,23 +338,23 @@ class UserServiceImplTest {
                 .build();
             userWithNewPassword.setId(userWithOldPassword.getId());
 
-            when(passwordEncoder.matches(newPassword, "old_hashed_password")).thenReturn(false);
-            when(passwordEncoder.encode(newPassword)).thenReturn(hashedPassword);
+            when(passwordSecurityService.matches(newPassword, "old_hashed_password")).thenReturn(false);
+            when(passwordSecurityService.encryptPassword(newPassword)).thenReturn(hashedPassword);
             when(userRepository.save(userWithOldPassword)).thenReturn(userWithNewPassword);
-            when(passwordEncoder.matches(newPassword, hashedPassword)).thenReturn(true);
+            when(passwordSecurityService.matches(newPassword, hashedPassword)).thenReturn(true);
 
             User updatedUser = userService.changePassword(userWithOldPassword, newPassword);
 
             assertEquals(hashedPassword, updatedUser.getPasswordHash());
-            verify(passwordEncoder).matches(newPassword, "old_hashed_password");
-            verify(passwordEncoder).encode(newPassword);
-            verify(userRepository, times(2)).save(userWithOldPassword);
-            verify(passwordEncoder).matches(newPassword, hashedPassword);
+            verify(passwordSecurityService).matches(newPassword, "old_hashed_password");
+            verify(passwordSecurityService).encryptPassword(newPassword);
+            verify(userRepository, times(1)).save(userWithOldPassword);
+            verify(passwordSecurityService).matches(newPassword, hashedPassword);
         }
 
         @Test
         void shouldFailWhenNewPasswordIsTheSameAsTheCurrentOne() {
-            when(passwordEncoder.matches(newPassword, password)).thenReturn(true);
+            when(passwordSecurityService.matches(newPassword, password)).thenReturn(true);
 
             InvalidCredentialsException exception = assertThrows(
                 InvalidCredentialsException.class,
@@ -362,7 +362,7 @@ class UserServiceImplTest {
             );
 
             assertThat(exception.getMessage()).contains("different from the existing one");
-            verify(passwordEncoder).matches(newPassword, password);
+            verify(passwordSecurityService).matches(newPassword, password);
         }
 
         @Test
@@ -383,10 +383,10 @@ class UserServiceImplTest {
                 .surname(surname)
                 .build();
 
-            when(passwordEncoder.matches(newPassword, "old_hashed_password")).thenReturn(false);
-            when(passwordEncoder.encode(newPassword)).thenReturn(hashedPassword);
+            when(passwordSecurityService.matches(newPassword, "old_hashed_password")).thenReturn(false);
+            when(passwordSecurityService.encryptPassword(newPassword)).thenReturn(hashedPassword);
             when(userRepository.save(userWithOldPassword)).thenReturn(userWithWrongPersistedPassword);
-            when(passwordEncoder.matches(newPassword, "wrong_hashed_password")).thenReturn(false);
+            when(passwordSecurityService.matches(newPassword, "wrong_hashed_password")).thenReturn(false);
 
             InvalidCredentialsException exception = assertThrows(
                 InvalidCredentialsException.class,
@@ -394,9 +394,9 @@ class UserServiceImplTest {
             );
 
             assertThat(exception.getMessage()).contains("could not be updated correctly");
-            verify(passwordEncoder).matches(newPassword, "old_hashed_password");
-            verify(passwordEncoder).encode(newPassword);
-            verify(passwordEncoder).matches(newPassword, "wrong_hashed_password");
+            verify(passwordSecurityService).matches(newPassword, "old_hashed_password");
+            verify(passwordSecurityService).encryptPassword(newPassword);
+            verify(passwordSecurityService).matches(newPassword, "wrong_hashed_password");
         }
     }
 

@@ -50,6 +50,8 @@ import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.security.JwtUtil;
 import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
 import com.ivansario.secureauth.service.interfaces.RoleService;
+import com.ivansario.secureauth.service.interfaces.UserProtectionService;
+import com.ivansario.secureauth.service.interfaces.UserService;
 import com.ivansario.secureauth.service.interfaces.UserSessionService;
 import com.ivansario.secureauth.util.RoleEnum;
 
@@ -64,7 +66,7 @@ class AuthServiceImplTest {
     private JwtUtil jwtUtil;
 
     @Mock
-    private UserServiceImpl userService;
+    private UserService userService;
 
     @Mock
     private RefreshTokenService refreshTokenService;
@@ -83,6 +85,9 @@ class AuthServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private UserProtectionService userProtectionService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -152,6 +157,9 @@ class AuthServiceImplTest {
         when(userDetails.getUsername()).thenReturn(username);
         when(authentication.getPrincipal()).thenReturn(userDetails);
         when(userService.findUser(email)).thenReturn(user);
+        when(userProtectionService.isBlocked(anyString(), anyString())).thenReturn(false);
+        when(userProtectionService.getFailedAttemptsForUser(anyString())).thenReturn(0);
+        when(userProtectionService.getFailedAttemptsForIp(anyString())).thenReturn(0);
     }
 
     @Nested
@@ -179,6 +187,7 @@ class AuthServiceImplTest {
             assertEquals(refreshTokenValue, response.getRefreshToken());
             verify(authManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
             verify(jwtUtil).generateToken(userDetails);
+            verify(userProtectionService).registerSuccessfulLogin(username, ipAddress);
             verify(userService).updateUser(any(User.class));
         }
 
@@ -209,10 +218,10 @@ class AuthServiceImplTest {
 
             when(authManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new AuthenticationException("Invalid credentials") {});
-            when(userService.findUser(username)).thenThrow(new RuntimeException("User not found"));
 
             assertThrows(InvalidCredentialsException.class, 
                 () -> authService.login(loginRequest, ipAddress, userAgent));
+            verify(userProtectionService).registerFailedAttempt(username, ipAddress);
         }
 
         @Test

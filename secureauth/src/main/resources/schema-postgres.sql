@@ -1,11 +1,19 @@
+-- EXTENSION
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+---------------------------------------------------
+-- ROLES
+---------------------------------------------------
 INSERT INTO "roles" (id, name, description) VALUES
 (gen_random_uuid(), 'ROLE_ADMIN', 'Full system access with all permissions'),
 (gen_random_uuid(), 'ROLE_USER', 'Standard user with limited permissions'),
 (gen_random_uuid(), 'ROLE_MANAGER', 'Manages users and projects'),
-(gen_random_uuid(), 'ROLE_AUDITOR', 'Read-only access to logs and audits');
+(gen_random_uuid(), 'ROLE_AUDITOR', 'Read-only access to logs and audits')
+ON CONFLICT (name) DO NOTHING;
 
+---------------------------------------------------
+-- PERMISSIONS
+---------------------------------------------------
 INSERT INTO "permissions" (id, name, description) VALUES
 (gen_random_uuid(), 'PROFILE_READ', 'Read own profile'),
 (gen_random_uuid(), 'PROFILE_UPDATE', 'Update own profile'),
@@ -28,8 +36,12 @@ INSERT INTO "permissions" (id, name, description) VALUES
 (gen_random_uuid(), 'PROJECT_EDIT', 'Edit projects'),
 (gen_random_uuid(), 'PROJECT_DELETE', 'Delete projects'),
 (gen_random_uuid(), 'AUDIT_READ', 'Read audit logs'),
-(gen_random_uuid(), 'SYSTEM_SETTINGS_READ', 'Read system settings');
+(gen_random_uuid(), 'SYSTEM_SETTINGS_READ', 'Read system settings')
+ON CONFLICT (name) DO NOTHING;
 
+---------------------------------------------------
+-- OBVIOUS PASSWORDS
+---------------------------------------------------
 INSERT INTO "obvious_passwords" (id, obvious_pass) VALUES
 (gen_random_uuid(), 'password'),
 (gen_random_uuid(), 'password1'),
@@ -51,6 +63,11 @@ INSERT INTO "obvious_passwords" (id, obvious_pass) VALUES
 (gen_random_uuid(), 'test12345')
 ON CONFLICT (obvious_pass) DO NOTHING;
 
+---------------------------------------------------
+-- ROLE PERMISSIONS (FIX IMPORTANTE)
+---------------------------------------------------
+
+-- ROLE_USER
 INSERT INTO "role_permissions" (role_id, permission_id)
 SELECT r.id, p.id
 FROM "roles" r
@@ -62,8 +79,10 @@ JOIN "permissions" p ON p.name IN (
   'SESSION_REVOKE',
   'PROJECT_READ'
 )
-WHERE r.name = 'ROLE_USER';
+WHERE r.name = 'ROLE_USER'
+ON CONFLICT DO NOTHING;
 
+-- ROLE_MANAGER
 INSERT INTO "role_permissions" (role_id, permission_id)
 SELECT r.id, p.id
 FROM "roles" r
@@ -80,8 +99,10 @@ JOIN "permissions" p ON p.name IN (
   'PROJECT_EDIT',
   'AUDIT_READ'
 )
-WHERE r.name = 'ROLE_MANAGER';
+WHERE r.name = 'ROLE_MANAGER'
+ON CONFLICT DO NOTHING;
 
+-- ROLE_ADMIN
 INSERT INTO "role_permissions" (role_id, permission_id)
 SELECT r.id, p.id
 FROM "roles" r
@@ -108,8 +129,10 @@ JOIN "permissions" p ON p.name IN (
   'AUDIT_READ',
   'SYSTEM_SETTINGS_READ'
 )
-WHERE r.name = 'ROLE_ADMIN';
+WHERE r.name = 'ROLE_ADMIN'
+ON CONFLICT DO NOTHING;
 
+-- ROLE_AUDITOR
 INSERT INTO "role_permissions" (role_id, permission_id)
 SELECT r.id, p.id
 FROM "roles" r
@@ -120,21 +143,28 @@ JOIN "permissions" p ON p.name IN (
   'PERMISSION_READ',
   'SESSION_READ'
 )
-WHERE r.name = 'ROLE_AUDITOR';
+WHERE r.name = 'ROLE_AUDITOR'
+ON CONFLICT DO NOTHING;
 
+---------------------------------------------------
+-- USERS (FIX IMPORTANTE)
+---------------------------------------------------
 INSERT INTO "users"(
-    id, created_at, email, enabled, last_login, name, password_hash, surname, updated_at, username, role_id)
-VALUES (
-    gen_random_uuid(), 
-    now(), 
-    'admin@admin.com',
-    true, 
-    now(), 
-    '',
-    crypt('admin', gen_salt('bf')), 
-    '',
-    now(), 
-    'admin',
-    (SELECT id FROM "roles" WHERE name = 'ROLE_ADMIN')
+    id, created_at, email, enabled, last_login,
+    name, password_hash, surname, updated_at, username, role_id
 )
-on conflict (username) do nothing;
+SELECT
+    gen_random_uuid(),
+    now(),
+    'admin@admin.com',
+    true,
+    now(),
+    '',
+    crypt('admin', gen_salt('bf')),
+    '',
+    now(),
+    'admin',
+    r.id
+FROM roles r
+WHERE r.name = 'ROLE_ADMIN'
+ON CONFLICT (username) DO NOTHING;

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.ivansario.secureauth.dto.AuthResponse;
 import com.ivansario.secureauth.dto.CreateUserRequest;
+import com.ivansario.secureauth.dto.InitialAdminLoginRequest;
 import com.ivansario.secureauth.dto.LoginRequest;
 import com.ivansario.secureauth.dto.NewPasswordUserRequest;
 import com.ivansario.secureauth.dto.RefreshTokenRequest;
@@ -28,10 +29,13 @@ import com.ivansario.secureauth.exception.SessionCreationException;
 import com.ivansario.secureauth.exception.TokenGenerationException;
 import com.ivansario.secureauth.exception.UserExistsException;
 import com.ivansario.secureauth.exception.UserNotFoundException;
+import com.ivansario.secureauth.exception.UserProtectionException;
 import com.ivansario.secureauth.security.JwtUtil;
 import com.ivansario.secureauth.service.interfaces.AuthService;
 import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
 import com.ivansario.secureauth.service.interfaces.RoleService;
+import com.ivansario.secureauth.service.interfaces.UserProtectionService;
+import com.ivansario.secureauth.service.interfaces.UserService;
 import com.ivansario.secureauth.service.interfaces.UserSessionService;
 import com.ivansario.secureauth.util.RoleEnum;
 
@@ -56,10 +60,25 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authManager;
     private final JwtUtil jwtUtil;
 
-    private final UserServiceImpl userService;
+    private final UserService userService;
     private final RefreshTokenService refreshTokenService;
     private final UserSessionService userSessionService;
     private final RoleService roleService;
+    private final UserProtectionService userProtectionService;
+
+    
+    @Override
+    public AuthResponse initialAdminLogin(InitialAdminLoginRequest request, String ipAddress, String userAgent) {
+        if (!"admin@admin.com".equalsIgnoreCase(request.getUsername())) {
+            throw new UserProtectionException("The user may be admin");
+        }
+        LoginRequest loginRequest = LoginRequest.builder()
+        .username(request.getUsername())
+        .password(request.getPassword())
+        .build();
+
+        return login(loginRequest, ipAddress, userAgent);
+    }
 
     /**
     * Authenticates the user and generates access and refresh tokens, and
@@ -74,7 +93,20 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress, String userAgent) {
 
-        Authentication authentication = authenticate(request.getUsername(), request.getPassword());
+        boolean isBlockedUser = userProtectionService.isBlocked(request.getUsername(), ipAddress);
+        if (isBlockedUser) {
+            throw new UserProtectionException("The user provided is blocked");
+        }
+        Authentication authentication;
+
+        try {
+            authentication = authenticate(request.getUsername(), request.getPassword());
+        } catch (AuthenticationException e) {
+            userProtectionService.registerFailedAttempt(request.getUsername(), ipAddress);
+            throw new InvalidCredentialsException("Invalid credentials", e);
+        }
+
+        userProtectionService.registerSuccessfulLogin(request.getUsername(), ipAddress);
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         User user = userService.findUser(userDetails.getUsername());
@@ -242,7 +274,12 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User userNewPassword = userService.changePassword(user, newPass);
-        Authentication authentication = authenticate(userNewPassword.getUsername(), newPass);
+        Authentication authentication;
+        try {
+            authentication = authenticate(userNewPassword.getUsername(), newPass);
+        } catch (AuthenticationException e) {
+            throw new InvalidCredentialsException("Invalid credentials", e);
+        }
 
         UserDetails newUserDetails = (UserDetails) authentication.getPrincipal();
 
@@ -269,20 +306,12 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * Realiza la autenticación usando el {@code AuthenticationManager}.
+     * Intenta autenticar con el valor proporcionado como username o email.
      */
     private Authentication authenticate(String username, String password) {
-        try {
-            return authManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(username, password));
-        } catch (AuthenticationException e) {
-            try {
-                User user = userService.findUser(username);
-                return authManager.authenticate(
-                        new UsernamePasswordAuthenticationToken(user.getEmail(), password));
-            } catch (Exception fallbackException) {
-                throw new InvalidCredentialsException("Invalid credentials");
-            }
-        }
+        String normalizedUsername = username == null ? null : username.trim();
+        return authManager.authenticate(
+                new UsernamePasswordAuthenticationToken(normalizedUsername, password));
     }
 
     /**
