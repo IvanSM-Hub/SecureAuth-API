@@ -160,7 +160,7 @@ SELECT
     true,
     now(),
     '',
-    crypt('admin', gen_salt('bf')),
+    '$2a$06$.sFO8WI9/Qo8g895Y40hOeusohW2mZ/7K3hEEGaIkGPTMC0tXK64O',
     '',
     now(),
     'admin',

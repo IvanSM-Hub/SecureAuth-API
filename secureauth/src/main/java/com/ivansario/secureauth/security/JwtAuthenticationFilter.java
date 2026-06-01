@@ -26,11 +26,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Filtro de petición que valida el JWT en las solicitudes entrantes.
+ * Request filter that validates the JWT for incoming requests.
  *
- * Ignora los endpoints de autenticación públicos y, para las demás rutas,
- * extrae el token Bearer de la cabecera Authorization y establece la
- * autenticación en el contexto de seguridad si el token es válido.
+ * Extracts the Bearer token from the Authorization header and sets the
+ * authentication in the security context if the token is valid.
  */
 @Component
 @Slf4j
@@ -43,10 +42,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final RefreshTokenService refreshTokenService;
 
     /**
-     * Manejo principal del filtro:
-     * - Omite rutas públicas (/api/auth/)
-     * - Extrae y valida el token Bearer
-     * - Establece la autenticación en SecurityContext si el token es válido
+     * Main filter handling:
+     * - Extracts and validates the Bearer token
+     * - Sets authentication in the SecurityContext if the token is valid
      */
     @Override
     protected void doFilterInternal(
@@ -57,10 +55,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 
         String requestPath = request.getRequestURI();
-        if (requestPath.startsWith("/api/auth/")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
         
         String authHeader = request.getHeader("Authorization");
         String token;
