@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.hibernate.validator.internal.constraintvalidators.bv.EmailValidator;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
@@ -100,9 +101,12 @@ public class UserServiceImpl implements UserService {
     
             return userRepository.save(user);
 
-        } catch (Exception e) {
-            log.error("It can't be possible to registrate the user.");
-            throw new UserCreationException("It can't be possible to registrate the user.");
+        } catch (DataIntegrityViolationException e) {
+            log.warn("User creation failed due to unique/constraint violation for email {}", createUserRequest.getEmail(), e);
+            throw new UserExistsException("The provided username or email is already in use");
+        } catch (RuntimeException e) {
+            log.error("Unexpected error while creating user with email {}", createUserRequest.getEmail(), e);
+            throw new UserCreationException("User could not be created", e);
         }
 
     }
@@ -296,6 +300,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse virtualDeleteUser(String userId) {
+        if (userId == null || userId.isBlank()) {
+            log.error("The id provided is null");
+            throw new IllegalArgumentException("The id provided is null");
+        }
         
         UUID uuidUser = UUID.fromString(userId);
 
@@ -304,6 +312,9 @@ public class UserServiceImpl implements UserService {
         userFinded.setUpdatedAt(LocalDateTime.now());
 
         UserSession userSession = userSessionService.findByUser(userFinded);
+        if (userSession == null) {
+            throw new SessionRevokeException("Session not found for: " + userFinded.getEmail());
+        }
         userSession.setRevoked(true);
         if (!userSession.isRevoked()) {
             log.error("It can't be possible revoke the session from the user: " + userFinded.getEmail());
@@ -311,6 +322,10 @@ public class UserServiceImpl implements UserService {
         }
 
         RefreshToken refreshToken = refreshTokenService.findByUser(userFinded);
+        if (refreshToken == null) {
+            log.error("Token not found by User: " + userFinded.getEmail());
+            throw new RefreshTokenRevokedException("Token not found by User: " + userFinded.getEmail());
+        }
         RefreshToken revokedToken = refreshTokenService.revokeToken(refreshToken);
         if (!revokedToken.isRevoked()) {
             log.error("It can't be possible revoke the token from the user: " + userFinded.getEmail());

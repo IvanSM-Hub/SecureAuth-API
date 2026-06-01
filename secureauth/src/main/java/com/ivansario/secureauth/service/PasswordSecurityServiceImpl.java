@@ -6,6 +6,7 @@ import java.security.NoSuchAlgorithmException;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import com.ivansario.secureauth.exception.InvalidPasswordProvided;
@@ -13,8 +14,10 @@ import com.ivansario.secureauth.service.interfaces.ObviousPasswordService;
 import com.ivansario.secureauth.service.interfaces.PasswordSecurityService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class PasswordSecurityServiceImpl implements PasswordSecurityService {
 
@@ -46,33 +49,41 @@ public class PasswordSecurityServiceImpl implements PasswordSecurityService {
 
     @Override
     public boolean isPasswordPwned(String rawPassword) {
+        String sha1;
         try {
-            String sha1 = sha1Hex(rawPassword).toUpperCase();
-
-            String prefix = sha1.substring(0, 5);
-            String suffix = sha1.substring(5);
-
-            String url = "https://api.pwnedpasswords.com/range/" + prefix;
-
-            String response = restTemplate.getForObject(url, String.class);
-
-            if (response == null) {
-                return false;
-            }
-
-            for (String line : response.split("\\r?\\n")) {
-                String[] parts = line.split(":");
-
-                if (parts[0].equalsIgnoreCase(suffix)) {
-                    return true;
-                }
-            }
-
-            return false;
-
-        } catch (Exception e) {
-            throw new InvalidPasswordProvided( "Error try to validating the password pwned.",e);
+            sha1 = sha1Hex(rawPassword).toUpperCase();
+        } catch (NoSuchAlgorithmException e) {
+            throw new InvalidPasswordProvided("Error trying to calculate password hash.", e);
         }
+
+        String prefix = sha1.substring(0, 5);
+        String suffix = sha1.substring(5);
+        String url = "https://api.pwnedpasswords.com/range/" + prefix;
+
+        String response;
+        try {
+            response = restTemplate.getForObject(url, String.class);
+        } catch (RestClientException e) {
+            log.warn("HIBP lookup unavailable for prefix {}. Continuing without breach validation.", prefix, e);
+            return false;
+        }
+
+        if (response == null || response.isBlank()) {
+            return false;
+        }
+
+        for (String line : response.split("\\r?\\n")) {
+            String[] parts = line.split(":");
+            if (parts.length < 2) {
+                continue;
+            }
+
+            if (parts[0].equalsIgnoreCase(suffix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override

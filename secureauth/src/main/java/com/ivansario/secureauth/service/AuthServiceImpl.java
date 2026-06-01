@@ -118,7 +118,7 @@ public class AuthServiceImpl implements AuthService {
         String accessToken;
         try {
             accessToken = jwtUtil.generateToken(userDetails);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             throw new TokenGenerationException("Failed to generate access token", e);
         }
 
@@ -226,7 +226,7 @@ public class AuthServiceImpl implements AuthService {
 
         Role role = roleService.findByName(roleType);
         if (role == null) {
-            throw new RuntimeException("Error: Role not found: " + roleType);
+            throw new IllegalArgumentException("Role not found: " + roleType);
         }
 
         User user = userService.createUser(request, role);
@@ -286,7 +286,7 @@ public class AuthServiceImpl implements AuthService {
         String accessToken;
         try {
             accessToken = jwtUtil.generateToken(newUserDetails);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             throw new TokenGenerationException("Failed to generate access token", e);
         }
 
@@ -320,7 +320,7 @@ public class AuthServiceImpl implements AuthService {
      */
     private void validateCreatedEntity(Object entity, String entityName) {
         if (entity == null) {
-            throw new RuntimeException("Error: " + entityName + " not created");
+            throw new IllegalStateException(entityName + " was not created");
         }
     }
 

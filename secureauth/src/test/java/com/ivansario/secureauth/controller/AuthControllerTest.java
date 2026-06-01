@@ -137,7 +137,7 @@ class AuthControllerITest {
                                 .username("ivan.sario")
                                 .name("Ivan")
                                 .surname("Sario")
-                                .password("Password1!")
+                                .password("password1!")
                                 .build();
 
                 mockMvc.perform(post("/api/auth/register")
@@ -146,7 +146,7 @@ class AuthControllerITest {
                                                 .content(objectMapper.writeValueAsString(weakPasswordRequest)))
                                 .andExpect(status().isBadRequest())
                                 .andExpect(jsonPath("$.message").value("Validation failed"))
-                                .andExpect(jsonPath("$.errors.password").value("Password must be between 12 and 128 characters"));
+                                                .andExpect(jsonPath("$.errors.password").value(org.hamcrest.Matchers.containsString("one uppercase letter")));
         }
 
     @Test

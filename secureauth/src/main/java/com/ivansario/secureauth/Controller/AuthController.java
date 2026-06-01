@@ -191,7 +191,7 @@ public class AuthController {
                                     "message": "Validation failed",
                                     "errors": {
                                         "email": "Email is required",
-                                        "password": "Password must be between 8 and 255 characters"
+                                        "password": "Password must be between 8 and 128 characters"
                                     }
                                 }
                                 """))

@@ -49,6 +49,18 @@ public class GlobalExceptionHandler extends Exception {
 		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
 	}
 
+	@ExceptionHandler(SessionRevokeException.class)
+	public ResponseEntity<Map<String, Object>> handleSessionRevoke(SessionRevokeException ex) {
+		log.error("Error revoking session: {}", ex.getMessage());
+		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+	}
+
+	@ExceptionHandler(UserCreationException.class)
+	public ResponseEntity<Map<String, Object>> handleUserCreation(UserCreationException ex) {
+		log.error("Error creating user: {}", ex.getMessage(), ex);
+		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+	}
+
 	@ExceptionHandler(InvalidRefreshTokenException.class)
 	public ResponseEntity<Map<String, Object>> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
 		log.warn("Invalid refresh token: {}", ex.getMessage());

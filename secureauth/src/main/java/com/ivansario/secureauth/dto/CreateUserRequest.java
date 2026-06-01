@@ -33,15 +33,16 @@ public class CreateUserRequest {
 
     @NotBlank(message = "Password is required")
     @Size(min = 8, max = 128, message = "Password must be between 8 and 128 characters")
-    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s])(?!.*\\s).{8,128}$",
-             message = 
-             """
-                Password must contain at least:
-                one uppercase letter,
-                one lowercase letter,
-                one number,
-                one special character,
-                and no spaces
-             """)
+    @Pattern(
+        regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s])(?!.*\\s).{8,128}$",
+        message = """
+            Password must contain at least:
+            one uppercase letter,
+            one lowercase letter,
+            one number,
+            one special character,
+            and no spaces
+        """
+    )
     private String password;
 }
