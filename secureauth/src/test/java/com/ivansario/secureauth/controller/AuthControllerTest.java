@@ -12,12 +12,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
 import com.ivansario.secureauth.Controller.AuthController;
-import com.ivansario.secureauth.dto.AuthResponse;
-import com.ivansario.secureauth.dto.CreateUserRequest;
-import com.ivansario.secureauth.dto.LoginRequest;
-import com.ivansario.secureauth.dto.NewPasswordUserRequest;
-import com.ivansario.secureauth.dto.RefreshTokenRequest;
-import com.ivansario.secureauth.dto.RegisterResponse;
+import com.ivansario.secureauth.dto.auth.AuthResponse;
+import com.ivansario.secureauth.dto.auth.LoginRequest;
+import com.ivansario.secureauth.dto.auth.NewPasswordUserRequest;
+import com.ivansario.secureauth.dto.auth.RefreshTokenRequest;
+import com.ivansario.secureauth.dto.user.CreateUserRequest;
+import com.ivansario.secureauth.dto.user.RegisterResponse;
 import com.ivansario.secureauth.exception.GlobalExceptionHandler;
 import com.ivansario.secureauth.service.interfaces.AuthService;
 import com.ivansario.secureauth.util.RoleEnum;

@@ -1,4 +1,4 @@
-package com.ivansario.secureauth.dto;
+package com.ivansario.secureauth.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;

@@ -1,5 +1,6 @@
-package com.ivansario.secureauth.dto;
+package com.ivansario.secureauth.dto.protect;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,8 +12,9 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserTokenRequest {
+public class ProtectionIpRequest {
 
-    private String refreshToken;
+    @NotBlank(message = "The ip is required")
+    private String ip;
 
 }

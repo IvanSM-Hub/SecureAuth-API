@@ -4,13 +4,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import com.ivansario.secureauth.dto.AuthResponse;
-import com.ivansario.secureauth.dto.CreateUserRequest;
-import com.ivansario.secureauth.dto.InitialAdminLoginRequest;
-import com.ivansario.secureauth.dto.LoginRequest;
-import com.ivansario.secureauth.dto.NewPasswordUserRequest;
-import com.ivansario.secureauth.dto.RefreshTokenRequest;
-import com.ivansario.secureauth.dto.RegisterResponse;
+import com.ivansario.secureauth.dto.auth.AuthResponse;
+import com.ivansario.secureauth.dto.auth.InitialAdminLoginRequest;
+import com.ivansario.secureauth.dto.auth.LoginRequest;
+import com.ivansario.secureauth.dto.auth.NewPasswordUserRequest;
+import com.ivansario.secureauth.dto.auth.RefreshTokenRequest;
+import com.ivansario.secureauth.dto.user.CreateUserRequest;
+import com.ivansario.secureauth.dto.user.RegisterResponse;
 import com.ivansario.secureauth.service.interfaces.AuthService;
 import com.ivansario.secureauth.util.RoleEnum;
 

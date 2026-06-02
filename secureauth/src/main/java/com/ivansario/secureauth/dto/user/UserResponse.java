@@ -1,4 +1,4 @@
-package com.ivansario.secureauth.dto;
+package com.ivansario.secureauth.dto.user;
 
 import java.time.LocalDateTime;
 

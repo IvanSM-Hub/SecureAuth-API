@@ -1,4 +1,4 @@
-package com.ivansario.secureauth.dto;
+package com.ivansario.secureauth.dto.user;
 
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;

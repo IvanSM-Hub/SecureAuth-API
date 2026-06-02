@@ -3,9 +3,9 @@ package com.ivansario.secureauth.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.ivansario.secureauth.dto.UpdateUserProfileRequest;
-import com.ivansario.secureauth.dto.UpdateUserRoleRequest;
-import com.ivansario.secureauth.dto.UserResponse;
+import com.ivansario.secureauth.dto.user.UpdateUserProfileRequest;
+import com.ivansario.secureauth.dto.user.UpdateUserRoleRequest;
+import com.ivansario.secureauth.dto.user.UserResponse;
 import com.ivansario.secureauth.service.interfaces.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;

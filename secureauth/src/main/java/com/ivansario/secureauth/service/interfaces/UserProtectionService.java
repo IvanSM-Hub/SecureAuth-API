@@ -2,99 +2,157 @@ package com.ivansario.secureauth.service.interfaces;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
+import com.ivansario.secureauth.dto.protect.ProtectionIpRequest;
+import com.ivansario.secureauth.dto.protect.ProtectionResponse;
+import com.ivansario.secureauth.dto.protect.ProtectionUsernameRequest;
+
 /**
- * Servicio responsable de la protección frente a intentos de acceso abusivos
- * (fuerza bruta / credential stuffing). La implementación puede basarse en
- * una tabla en BD, en Redis o en memoria según escalabilidad requerida.
+ * Service responsible for protecting against abusive access attempts
+ * (brute force / credential stuffing). The implementation may rely on
+ * a database table, Redis, or in-memory storage depending on scalability needs.
  */
 public interface UserProtectionService {
 
 	/**
-	 * Comprueba si el usuario está bloqueado actualmente.
-	 * @param username nombre de usuario (puede ser email o username)
-	 * @return true si hay un bloqueo activo sobre el usuario
+	 * Checks whether the user is currently blocked.
+	 *
+	 * @param username user identifier, which may be an email address or username
+	 * @return {@code true} when the user has an active block
 	 */
 	boolean isUserBlocked(String username);
 
 	/**
-	 * Comprueba si la IP está bloqueada actualmente.
-	 * @param ip Dirección IP (texto)
-	 * @return true si la IP tiene un bloqueo activo
+	 * Checks whether the IP address is currently blocked.
+	 *
+	 * @param ip IP address in text form
+	 * @return {@code true} when the IP address has an active block
 	 */
 	boolean isIpBlocked(String ip);
 
 	/**
-	 * Combinación de comprobación por usuario e IP.
-	 * @param username nombre de usuario
-	 * @param ip dirección IP
-	 * @return true si alguno de los criterios indica bloqueo
+	 * Checks whether access should be blocked based on either the user or IP address.
+	 *
+	 * @param username user identifier
+	 * @param ip IP address
+	 * @return {@code true} when either criterion indicates an active block
 	 */
 	boolean isBlocked(String username, String ip);
 
 	/**
-	 * Registra un intento fallido de autenticación para la pareja
-	 * (usuario, ip). La implementación decide si incrementa contadores,
-	 * aplica backoff o establece un bloqueo temporal.
-	 * @param username nombre de usuario intentado (puede ser null/empty)
-	 * @param ip dirección IP del origen
+	 * Records a failed authentication attempt for the given user and IP pair.
+	 * The implementation decides whether to increase counters, apply backoff,
+	 * or create a temporary block.
+	 *
+	 * @param username attempted user identifier, which may be {@code null} or empty
+	 * @param ip source IP address
 	 */
 	void registerFailedAttempt(String username, String ip);
 
 	/**
-	 * Registra un inicio de sesión exitoso. Debe limpiar contadores y
-	 * desbloquear recursos asociados al usuario/ip si procede.
-	 * @param username nombre de usuario autenticado
-	 * @param ip dirección IP del origen
+	 * Records a successful login. Implementations should clear counters and
+	 * remove any associated user or IP blocks when appropriate.
+	 *
+	 * @param username authenticated user identifier
+	 * @param ip source IP address
 	 */
 	void registerSuccessfulLogin(String username, String ip);
 
 	/**
-	 * Obtiene el número aproximado de intentos fallidos acumulados para
-	 * el usuario en el periodo configurado.
+	 * Returns the approximate number of failed attempts accumulated for the user
+	 * during the configured time window.
+	 *
+	 * @param username user identifier
+	 * @return approximate number of failed attempts for the user
 	 */
 	int getFailedAttemptsForUser(String username);
 
 	/**
-	 * Obtiene el número aproximado de intentos fallidos acumulados para
-	 * la IP en el periodo configurado.
+	 * Returns the approximate number of failed attempts accumulated for the IP
+	 * address during the configured time window.
+	 *
+	 * @param ip IP address
+	 * @return approximate number of failed attempts for the IP address
 	 */
 	int getFailedAttemptsForIp(String ip);
 
 	/**
-	 * Resetea los contadores de fallos para la pareja (usuario, ip).
+	 * Resets failed-attempt counters for the given user and IP pair.
+	 *
+	 * @param username user identifier
+	 * @param ip IP address
 	 */
 	void resetFailedAttempts(String username, String ip);
 
 	/**
-	 * Devuelve, si existe, el instante hasta el que el usuario está bloqueado.
+	 * Returns the instant until which the user remains blocked, if any.
+	 *
+	 * @param username user identifier
+	 * @return the block expiration instant for the user, if present
 	 */
 	Optional<Instant> getBlockedUntilForUser(String username);
 
 	/**
-	 * Devuelve, si existe, el instante hasta el que la IP está bloqueada.
+	 * Returns the instant until which the IP address remains blocked, if any.
+	 *
+	 * @param ip IP address
+	 * @return the block expiration instant for the IP address, if present
 	 */
 	Optional<Instant> getBlockedUntilForIp(String ip);
 
 	/**
-	 * Bloqueo administrativo temporal sobre un usuario.
+	 * Applies a temporary administrative block to a user.
+	 *
+	 * @param username user identifier
+	 * @param duration block duration
 	 */
 	void blockUser(String username, Duration duration);
 
 	/**
-	 * Levanta un bloqueo administrativo sobre un usuario.
+	 * Removes an administrative block from a user.
+	 *
+	 * @param username user identifier
 	 */
 	void unblockUser(String username);
 
 	/**
-	 * Bloqueo administrativo temporal sobre una IP.
+	 * Applies a temporary administrative block to an IP address.
+	 *
+	 * @param ip IP address
+	 * @param duration block duration
 	 */
 	void blockIp(String ip, Duration duration);
 
 	/**
-	 * Levanta un bloqueo administrativo sobre una IP.
+	 * Removes an administrative block from an IP address.
+	 *
+	 * @param ip IP address
 	 */
 	void unblockIp(String ip);
+
+	/**
+	 * Returns the current protection entries tracked for users.
+	 *
+	 * @return list of user protection details
+	 */
+	List<ProtectionResponse> getAllUserProtections();
+
+	/**
+	 * Returns protection details for a specific user identifier.
+	 *
+	 * @param protectionUsername request payload containing the username to query
+	 * @return protection details associated with the requested username
+	 */
+	ProtectionResponse getUserProtectionByUsername(ProtectionUsernameRequest protectionUsername);
+
+	/**
+	 * Returns protection details for a specific IP address.
+	 *
+	 * @param protectionIp request payload containing the IP address to query
+	 * @return protection details associated with the requested IP address
+	 */
+	ProtectionResponse getUserProtectionByIp(ProtectionIpRequest protectionIp);
 
 }

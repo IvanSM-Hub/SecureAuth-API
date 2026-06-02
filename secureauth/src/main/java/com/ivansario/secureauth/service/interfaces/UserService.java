@@ -4,10 +4,10 @@ import java.util.List;
 
 import org.springframework.security.core.userdetails.UserDetailsService;
 
-import com.ivansario.secureauth.dto.CreateUserRequest;
-import com.ivansario.secureauth.dto.UpdateUserProfileRequest;
-import com.ivansario.secureauth.dto.UpdateUserRoleRequest;
-import com.ivansario.secureauth.dto.UserResponse;
+import com.ivansario.secureauth.dto.user.CreateUserRequest;
+import com.ivansario.secureauth.dto.user.UpdateUserProfileRequest;
+import com.ivansario.secureauth.dto.user.UpdateUserRoleRequest;
+import com.ivansario.secureauth.dto.user.UserResponse;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
 

@@ -4,11 +4,17 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
+import com.ivansario.secureauth.dto.protect.ProtectionIpRequest;
+import com.ivansario.secureauth.dto.protect.ProtectionResponse;
+import com.ivansario.secureauth.dto.protect.ProtectionUsernameRequest;
+import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.entity.UserProtection;
+import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.exception.UserProtectionException;
 import com.ivansario.secureauth.repository.UserProtectionRepository;
 import com.ivansario.secureauth.service.interfaces.UserProtectionService;
@@ -316,6 +322,80 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             .numTrys(0)
             .active(false)
             .lastTry(now)
+            .build();
+    }
+
+    @Override
+    public List<ProtectionResponse> getAllUserProtections() {
+        List<UserProtection> protections = userProtectionRepository.findAll();
+        
+        return protections.stream().map(protection -> {
+            var user = protection.getUser();
+            if (user == null) {
+                throw new UserNotFoundException("User it can't be found in the protection request");
+            }
+            return ProtectionResponse.builder()
+            .ip(protection.getIpOrigin())
+            .numTrys(protection.getNumTrys())
+            .lastTry((protection.getLastTry()) == null ? null : protection.getLastTry().toString())
+            .bloquedAt((protection.getBloquedAt()) == null ? null : protection.getBloquedAt().toString())
+            .active(protection.isActive())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .enable(user.getEnabled())
+            .createAt((user.getCreatedAt() == null) ? null : user.getCreatedAt().toString())
+            .updatedAt((user.getUpdatedAt() == null) ? null :user.getUpdatedAt().toString())
+            .lastLogin((user.getLastLogin() == null) ? null :user.getLastLogin().toString())
+            .role(user.getRole())
+            .build();
+        }).toList();
+    }
+
+    @Override
+    public ProtectionResponse getUserProtectionByUsername(ProtectionUsernameRequest protectionUsername) {
+        UserProtection protection = userProtectionRepository.findByUser_Username(protectionUsername.getUsername())
+        .orElseThrow(() -> new UserProtectionException(INVALID_INPUT_MESSAGE));
+        User user = protection.getUser();
+        if (user == null) {
+            throw new UserNotFoundException("User it can't be found in the protection request");
+        }
+        return ProtectionResponse.builder()
+            .ip(protection.getIpOrigin())
+            .numTrys(protection.getNumTrys())
+            .lastTry((protection.getLastTry()) == null ? null : protection.getLastTry().toString())
+            .bloquedAt((protection.getBloquedAt()) == null ? null : protection.getBloquedAt().toString())
+            .active(protection.isActive())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .enable(user.getEnabled())
+            .createAt((user.getCreatedAt() == null) ? null : user.getCreatedAt().toString())
+            .updatedAt((user.getUpdatedAt() == null) ? null :user.getUpdatedAt().toString())
+            .lastLogin((user.getLastLogin() == null) ? null :user.getLastLogin().toString())
+            .role(user.getRole())
+            .build();
+    }
+
+    @Override
+    public ProtectionResponse getUserProtectionByIp(ProtectionIpRequest protectionIp) {
+        UserProtection protection = userProtectionRepository.findByIpOrigin(protectionIp.getIp())
+        .orElseThrow(() -> new UserProtectionException(INVALID_INPUT_MESSAGE));
+        User user = protection.getUser();
+        if (user == null) {
+            throw new UserNotFoundException("User it can't be found in the protection request");
+        }
+        return ProtectionResponse.builder()
+            .ip(protection.getIpOrigin())
+            .numTrys(protection.getNumTrys())
+            .lastTry((protection.getLastTry()) == null ? null : protection.getLastTry().toString())
+            .bloquedAt((protection.getBloquedAt()) == null ? null : protection.getBloquedAt().toString())
+            .active(protection.isActive())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .enable(user.getEnabled())
+            .createAt((user.getCreatedAt() == null) ? null : user.getCreatedAt().toString())
+            .updatedAt((user.getUpdatedAt() == null) ? null :user.getUpdatedAt().toString())
+            .lastLogin((user.getLastLogin() == null) ? null :user.getLastLogin().toString())
+            .role(user.getRole())
             .build();
     }
 

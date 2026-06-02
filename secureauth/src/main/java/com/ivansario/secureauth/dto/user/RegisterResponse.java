@@ -1,4 +1,4 @@
-package com.ivansario.secureauth.dto;
+package com.ivansario.secureauth.dto.user;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
