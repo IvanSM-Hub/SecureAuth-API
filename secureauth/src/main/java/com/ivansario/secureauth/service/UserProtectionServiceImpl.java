@@ -6,8 +6,11 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.stereotype.Service;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import com.ivansario.secureauth.dto.protect.ProtectionIpRequest;
 import com.ivansario.secureauth.dto.protect.ProtectionResponse;
@@ -21,8 +24,10 @@ import com.ivansario.secureauth.service.interfaces.UserProtectionService;
 import com.ivansario.secureauth.service.interfaces.UserService;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UserProtectionServiceImpl implements UserProtectionService {
 
@@ -30,9 +35,14 @@ public class UserProtectionServiceImpl implements UserProtectionService {
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final Duration BLOCK_DURATION = Duration.ofMinutes(15);
+    private static final String IP_TRIES_KEY = "protect:ip:tries:";
+    private static final String USER_TRIES_KEY = "protect:user:tries:";
+    private static final String IP_BLOCK_KEY = "protect:ip:block:";
+    private static final String USER_BLOCK_KEY = "protect:user:block:";
 
     private final UserProtectionRepository userProtectionRepository;
     private final UserService userService;
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     public void blockIp(String ip, Duration duration) {
@@ -40,11 +50,15 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
+        String normalizedIp = ip.trim();
+        Duration effectiveDuration = duration != null ? duration : BLOCK_DURATION;
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime blockedAt = now.plus(duration != null ? duration : BLOCK_DURATION);
+        LocalDateTime blockedAt = now.plus(effectiveDuration);
 
-        UserProtection protection = userProtectionRepository.findByIpOrigin(ip.trim())
-            .orElseGet(() -> buildIpProtection(ip.trim(), now));
+        updateRedisBlock(ipBlockKey(normalizedIp), ipTriesKey(normalizedIp), effectiveDuration);
+
+        UserProtection protection = userProtectionRepository.findByIpOrigin(normalizedIp)
+            .orElseGet(() -> buildIpProtection(normalizedIp, now));
 
         applyBlock(protection, blockedAt, false);
     }
@@ -55,11 +69,15 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
+        String normalizedUsername = username.trim();
+        Duration effectiveDuration = duration != null ? duration : BLOCK_DURATION;
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime blockedAt = now.plus(duration != null ? duration : BLOCK_DURATION);
+        LocalDateTime blockedAt = now.plus(effectiveDuration);
 
-        UserProtection protection = userProtectionRepository.findByUser_Username(username.trim())
-            .orElseGet(() -> buildUserProtection(username.trim(), "User: " + username, now));
+        updateRedisBlock(userBlockKey(normalizedUsername), userTriesKey(normalizedUsername), effectiveDuration);
+
+        UserProtection protection = userProtectionRepository.findByUser_Username(normalizedUsername)
+            .orElseGet(() -> buildUserProtection(normalizedUsername, "User: " + normalizedUsername, now));
 
         applyBlock(protection, blockedAt, false);
     }
@@ -70,7 +88,13 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
-        return getBlockedUntil(userProtectionRepository.findByIpOrigin(ip.trim()));
+        String normalizedIp = ip.trim();
+        Optional<Instant> blockedByRedis = getBlockedUntilFromRedis(ipBlockKey(normalizedIp));
+        if (blockedByRedis.isPresent()) {
+            return blockedByRedis;
+        }
+
+        return getBlockedUntil(userProtectionRepository.findByIpOrigin(normalizedIp));
     }
 
     @Override
@@ -79,7 +103,13 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
-        return getBlockedUntil(userProtectionRepository.findByUser_Username(username.trim()));
+        String normalizedUsername = username.trim();
+        Optional<Instant> blockedByRedis = getBlockedUntilFromRedis(userBlockKey(normalizedUsername));
+        if (blockedByRedis.isPresent()) {
+            return blockedByRedis;
+        }
+
+        return getBlockedUntil(userProtectionRepository.findByUser_Username(normalizedUsername));
     }
 
     @Override
@@ -88,7 +118,13 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
-        return userProtectionRepository.findByIpOrigin(ip.trim())
+        String normalizedIp = ip.trim();
+        Integer redisAttempts = getAttemptsFromRedis(ipTriesKey(normalizedIp));
+        if (redisAttempts != null) {
+            return redisAttempts;
+        }
+
+        return userProtectionRepository.findByIpOrigin(normalizedIp)
             .map(UserProtection::getNumTrys)
             .orElse(0);
     }
@@ -99,7 +135,13 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
-        return userProtectionRepository.findByUser_Username(username.trim())
+        String normalizedUsername = username.trim();
+        Integer redisAttempts = getAttemptsFromRedis(userTriesKey(normalizedUsername));
+        if (redisAttempts != null) {
+            return redisAttempts;
+        }
+
+        return userProtectionRepository.findByUser_Username(normalizedUsername)
             .map(UserProtection::getNumTrys)
             .orElse(0);
     }
@@ -115,7 +157,12 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
-        Optional<UserProtection> userProtection = userProtectionRepository.findByIpOrigin(ip.trim());
+        String normalizedIp = ip.trim();
+        if (isBlockedInRedis(ipBlockKey(normalizedIp))) {
+            return true;
+        }
+
+        Optional<UserProtection> userProtection = userProtectionRepository.findByIpOrigin(normalizedIp);
         if (userProtection.isEmpty()) {
             return false;
         }
@@ -138,7 +185,12 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
-        Optional<UserProtection> userProtection = userProtectionRepository.findByUser_Username(username.trim());
+        String normalizedUsername = username.trim();
+        if (isBlockedInRedis(userBlockKey(normalizedUsername))) {
+            return true;
+        }
+
+        Optional<UserProtection> userProtection = userProtectionRepository.findByUser_Username(normalizedUsername);
         if (userProtection.isEmpty()) {
             return false;
         }
@@ -168,6 +220,8 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         if (isBlocked(normalizedUsername, normalizedIp)) {
             return;
         }
+
+        registerFailedAttemptInRedis(normalizedUsername, normalizedIp);
 
         UserProtection ipProtection = userProtectionRepository.findByIpOrigin(normalizedIp)
             .orElseGet(() -> buildIpProtection(normalizedIp, now));
@@ -207,11 +261,13 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         String normalizedUsername = username == null ? null : username.trim();
 
         if (normalizedIp != null && !normalizedIp.isBlank()) {
+            clearProtectionInRedis(null, normalizedIp);
             userProtectionRepository.findByIpOrigin(normalizedIp)
                 .ifPresent(protection -> resetProtection(protection, now));
         }
 
         if (normalizedUsername != null && !normalizedUsername.isBlank()) {
+            clearProtectionInRedis(normalizedUsername, null);
             userProtectionRepository.findByUser_Username(normalizedUsername)
                 .ifPresent(protection -> resetProtection(protection, now));
         }
@@ -228,11 +284,13 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         String normalizedUsername = username == null ? null : username.trim();
 
         if (normalizedIp != null && !normalizedIp.isBlank()) {
+            clearProtectionInRedis(null, normalizedIp);
             userProtectionRepository.findByIpOrigin(normalizedIp)
                 .ifPresent(protection -> resetProtection(protection, now));
         }
 
         if (normalizedUsername != null && !normalizedUsername.isBlank()) {
+            clearProtectionInRedis(normalizedUsername, null);
             userProtectionRepository.findByUser_Username(normalizedUsername)
                 .ifPresent(protection -> resetProtection(protection, now));
         }
@@ -245,7 +303,10 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
-        UserProtection protection = userProtectionRepository.findByIpOrigin(ip.trim()).orElse(null);
+        String normalizedIp = ip.trim();
+        clearProtectionInRedis(null, normalizedIp);
+
+        UserProtection protection = userProtectionRepository.findByIpOrigin(normalizedIp).orElse(null);
         if (protection == null) {
             return;
         }
@@ -262,7 +323,10 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
-        UserProtection protection = userProtectionRepository.findByUser_Username(username.trim()).orElse(null);
+        String normalizedUsername = username.trim();
+        clearProtectionInRedis(normalizedUsername, null);
+
+        UserProtection protection = userProtectionRepository.findByUser_Username(normalizedUsername).orElse(null);
         if (protection == null) {
             return;
         }
@@ -323,6 +387,104 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             .active(false)
             .lastTry(now)
             .build();
+    }
+
+    private void registerFailedAttemptInRedis(String username, String ip) {
+        try {
+            registerFailedAttemptByKey(ipTriesKey(ip), ipBlockKey(ip));
+            registerFailedAttemptByKey(userTriesKey(username), userBlockKey(username));
+        } catch (RuntimeException ex) {
+            log.warn("Redis unavailable while recording failed attempt for username={} ip={}. Falling back to DB only.", username, ip, ex);
+        }
+    }
+
+    private void registerFailedAttemptByKey(String triesKey, String blockKey) {
+        ValueOperations<String, String> operations = redisTemplate.opsForValue();
+        Long attempts = operations.increment(triesKey);
+
+        if (attempts != null && attempts == 1L) {
+            redisTemplate.expire(triesKey, BLOCK_DURATION);
+        }
+
+        if (attempts != null && attempts >= MAX_FAILED_ATTEMPTS) {
+            operations.set(blockKey, "1", BLOCK_DURATION);
+        }
+    }
+
+    private void updateRedisBlock(String blockKey, String triesKey, Duration duration) {
+        try {
+            redisTemplate.opsForValue().set(blockKey, "1", duration);
+            redisTemplate.delete(triesKey);
+        } catch (RuntimeException ex) {
+            log.warn("Redis unavailable while writing administrative block key={}", blockKey, ex);
+        }
+    }
+
+    private boolean isBlockedInRedis(String blockKey) {
+        try {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(blockKey));
+        } catch (RuntimeException ex) {
+            log.warn("Redis unavailable while checking block key={}", blockKey, ex);
+            return false;
+        }
+    }
+
+    private Optional<Instant> getBlockedUntilFromRedis(String blockKey) {
+        try {
+            Long ttl = redisTemplate.getExpire(blockKey, TimeUnit.SECONDS);
+            if (ttl == null || ttl <= 0) {
+                return Optional.empty();
+            }
+            return Optional.of(Instant.now().plusSeconds(ttl));
+        } catch (RuntimeException ex) {
+            log.warn("Redis unavailable while checking block TTL for key={}", blockKey, ex);
+            return Optional.empty();
+        }
+    }
+
+    private Integer getAttemptsFromRedis(String triesKey) {
+        try {
+            String value = redisTemplate.opsForValue().get(triesKey);
+            if (value == null || value.isBlank()) {
+                return null;
+            }
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            redisTemplate.delete(triesKey);
+            return null;
+        } catch (RuntimeException ex) {
+            log.warn("Redis unavailable while checking attempts key={}", triesKey, ex);
+            return null;
+        }
+    }
+
+    private void clearProtectionInRedis(String username, String ip) {
+        try {
+            if (ip != null && !ip.isBlank()) {
+                redisTemplate.delete(List.of(ipTriesKey(ip), ipBlockKey(ip)));
+            }
+            if (username != null && !username.isBlank()) {
+                redisTemplate.delete(List.of(userTriesKey(username), userBlockKey(username)));
+            }
+        } catch (RuntimeException ex) {
+            log.warn("Redis unavailable while clearing protection keys for username={} ip={}", username, ip, ex);
+        }
+    }
+
+    private String ipTriesKey(String ip) {
+        return IP_TRIES_KEY + ip;
+    }
+
+    private String userTriesKey(String username) {
+        return USER_TRIES_KEY + username;
+    }
+
+    private String ipBlockKey(String ip) {
+        return IP_BLOCK_KEY + ip;
+    }
+
+    private String userBlockKey(String username) {
+        return USER_BLOCK_KEY + username;
     }
 
     @Override
