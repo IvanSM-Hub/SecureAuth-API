@@ -155,4 +155,22 @@ public interface UserProtectionService {
 	 */
 	ProtectionResponse getUserProtectionByIp(ProtectionIpRequest protectionIp);
 
+	/**
+	 * Applies an administrative block to a user identified by username and returns
+	 * the updated protection details.
+	 *
+	 * @param protectionUsername request payload containing the username to block
+	 * @return updated protection details for the blocked user
+	 */
+	ProtectionResponse blockByUsername(ProtectionUsernameRequest protectionUsername);
+	
+	/**
+	 * Applies an administrative block to an IP address and returns the updated
+	 * protection details.
+	 *
+	 * @param protectionIp request payload containing the IP address to block
+	 * @return updated protection details for the blocked IP address
+	 */
+	ProtectionResponse blockByIp(ProtectionIpRequest protectionIp);
+
 }

@@ -561,4 +561,52 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             .build();
     }
 
+    @Override
+    public ProtectionResponse blockByIp(ProtectionIpRequest protectionIp) {
+        blockIp(protectionIp.getIp(), Duration.ofDays(1));
+        
+        UserProtection protection = userProtectionRepository.findByIpOrigin(protectionIp.getIp())
+        .orElseThrow(
+            () -> new UserProtectionException(INVALID_INPUT_MESSAGE)
+        );
+
+        return ProtectionResponse.builder()
+            .ip(protection.getIpOrigin())
+            .numTrys(protection.getNumTrys())
+            .lastTry((protection.getLastTry()) == null ? null : protection.getLastTry().toString())
+            .bloquedAt((protection.getBloquedAt()) == null ? null : protection.getBloquedAt().toString())
+            .active(protection.isActive())
+            .build();
+    }
+
+    @Override
+    public ProtectionResponse blockByUsername(ProtectionUsernameRequest protectionUsername) {
+        blockUser(protectionUsername.getUsername(), Duration.ofDays(1));
+
+        UserProtection protection = userProtectionRepository.findByUser_Username(protectionUsername.getUsername())
+        .orElseThrow(
+            () -> new UserProtectionException(INVALID_INPUT_MESSAGE)
+        );
+        
+        User user = protection.getUser();
+        if (user == null) {
+            throw new UserProtectionException(INVALID_INPUT_MESSAGE);
+        }
+
+        return ProtectionResponse.builder()
+            .ip(protection.getIpOrigin())
+            .numTrys(protection.getNumTrys())
+            .lastTry((protection.getLastTry()) == null ? null : protection.getLastTry().toString())
+            .bloquedAt((protection.getBloquedAt()) == null ? null : protection.getBloquedAt().toString())
+            .active(protection.isActive())
+            .username(user.getUsername())
+            .email(user.getEmail())
+            .enable(user.getEnabled())
+            .createAt((user.getCreatedAt() == null) ? null : user.getCreatedAt().toString())
+            .updatedAt((user.getUpdatedAt() == null) ? null :user.getUpdatedAt().toString())
+            .lastLogin((user.getLastLogin() == null) ? null :user.getLastLogin().toString())
+            .role(user.getRole())
+            .build();
+    }
+
 }
