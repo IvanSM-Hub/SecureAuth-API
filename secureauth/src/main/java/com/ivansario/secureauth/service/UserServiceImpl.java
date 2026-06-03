@@ -177,6 +177,7 @@ public class UserServiceImpl implements UserService {
 
         List<UserResponse> userResponses = users.stream()
                 .map(user -> UserResponse.builder()
+                .id(user.getId() != null ? user.getId().toString() : null)
                         .username(user.getUsername())
                         .email(user.getEmail())
                         .role(user.getRole() != null ? user.getRole().getName().name() : null)
@@ -197,6 +198,7 @@ public class UserServiceImpl implements UserService {
         User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + userId));
         
         return UserResponse.builder()
+        .id(userFinded.getId() != null ? userFinded.getId().toString() : null)
         .username(userFinded.getUsername())
         .email(userFinded.getEmail())
         .role(userFinded.getRole().getName().name())
@@ -211,10 +213,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserResponse updateUserProfile(String userId, UpdateUserProfileRequest updateUser) {
+    public UserResponse updateUserProfile(UpdateUserProfileRequest updateUser) {
 
-        UUID uuidUser = UUID.fromString(userId);
-        User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + userId));
+        UUID uuidUser = UUID.fromString(updateUser.getId());
+        User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + updateUser.getId()));
 
         String updatedUsername = updateUser.getUsername();
         String updatedName = updateUser.getName();
@@ -252,6 +254,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(userFinded);
 
         return UserResponse.builder()
+        .id(userFinded.getId() != null ? userFinded.getId().toString() : null)
         .username(userFinded.getUsername())
         .email(userFinded.getEmail())
         .role(userFinded.getRole().getName().name())
@@ -266,9 +269,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserResponse updateUserRole(String userId, UpdateUserRoleRequest updateUser) {
-        UUID uuidUser = UUID.fromString(userId);
-        User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + userId));
+    public UserResponse updateUserRole(UpdateUserRoleRequest updateUser) {
+        UUID uuidUser = UUID.fromString(updateUser.getId());
+        User userFinded = userRepository.findById(uuidUser).orElseThrow(() -> new UserNotFoundException("User not Found by uuid: " + updateUser.getId()));
 
         String updatedRole = updateUser.getRoleName();
 
@@ -286,6 +289,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(userFinded);
 
         return UserResponse.builder()
+        .id(userFinded.getId() != null ? userFinded.getId().toString() : null)
         .username(userFinded.getUsername())
         .email(userFinded.getEmail())
         .role(userFinded.getRole().getName().name())
@@ -335,6 +339,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(userFinded);
 
         return UserResponse.builder()
+        .id(userFinded.getId() != null ? userFinded.getId().toString() : null)
         .username(userFinded.getUsername())
         .email(userFinded.getEmail())
         .role(userFinded.getRole().getName().name())
@@ -360,6 +365,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(userFinded);
 
         return UserResponse.builder()
+        .id(userFinded.getId() != null ? userFinded.getId().toString() : null)
         .username(userFinded.getUsername())
         .email(userFinded.getEmail())
         .role(userFinded.getRole().getName().name())

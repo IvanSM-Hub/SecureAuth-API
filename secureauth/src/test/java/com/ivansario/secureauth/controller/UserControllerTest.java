@@ -1,7 +1,6 @@
 package com.ivansario.secureauth.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,6 +17,7 @@ import java.util.UUID;
 import com.ivansario.secureauth.Controller.UserController;
 import com.ivansario.secureauth.dto.user.UpdateUserProfileRequest;
 import com.ivansario.secureauth.dto.user.UpdateUserRoleRequest;
+import com.ivansario.secureauth.dto.user.UserIdRequest;
 import com.ivansario.secureauth.dto.user.UserResponse;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
@@ -63,7 +63,7 @@ class UserControllerITest {
                 .setValidator(validator)
                 .build();
 
-        userId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        userId = UUID.fromString("11111111-1111-4111-8111-111111111111");
 
         Role userRole = Role.builder()
                 .name(RoleEnum.ROLE_USER)
@@ -134,7 +134,13 @@ class UserControllerITest {
     void getUserShouldReturnProfile() throws Exception {
                 when(userService.getUserById(userId.toString())).thenReturn(userResponse);
 
-        mockMvc.perform(get("/api/user/{userId}", userId))
+        UserIdRequest request = UserIdRequest.builder()
+                .id(userId.toString())
+                .build();
+
+        mockMvc.perform(get("/api/user/one")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("owner@example.com"))
                 .andExpect(jsonPath("$.completeName").value("Owner User"));
@@ -143,14 +149,15 @@ class UserControllerITest {
     @Test
     void updateProfileShouldReturnUpdatedUser() throws Exception {
         UpdateUserProfileRequest request = UpdateUserProfileRequest.builder()
+                                .id(userId.toString())
                 .username("owner.updated@example.com")
                 .name("Owner")
                 .surname("Updated")
                 .build();
 
-        when(userService.updateUserProfile(anyString(), any(UpdateUserProfileRequest.class))).thenReturn(updatedResponse);
+        when(userService.updateUserProfile(any(UpdateUserProfileRequest.class))).thenReturn(updatedResponse);
 
-        mockMvc.perform(put("/api/user/update/{userId}", userId)
+        mockMvc.perform(put("/api/user/update-user")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -160,23 +167,25 @@ class UserControllerITest {
 
     @Test
     void updateProfileShouldRejectInvalidPayload() throws Exception {
-        mockMvc.perform(put("/api/user/update/{userId}", userId)
+        mockMvc.perform(put("/api/user/update-user")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"ab\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.id").value("User id is required"))
                 .andExpect(jsonPath("$.errors.username").value("Username must be between 3 and 100 characters"));
     }
 
     @Test
     void updateRoleShouldWork() throws Exception {
         UpdateUserRoleRequest request = UpdateUserRoleRequest.builder()
+                                .id(userId.toString())
                 .roleName("ROLE_ADMIN")
                 .build();
 
-        when(userService.updateUserRole(anyString(), any(UpdateUserRoleRequest.class))).thenReturn(roleResponse);
+        when(userService.updateUserRole(any(UpdateUserRoleRequest.class))).thenReturn(roleResponse);
 
-        mockMvc.perform(put("/api/user/role/{userId}", userId)
+        mockMvc.perform(put("/api/user/update-role")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -187,7 +196,13 @@ class UserControllerITest {
     void virtualDeleteShouldReturnUser() throws Exception {
         when(userService.virtualDeleteUser(userId.toString())).thenReturn(userResponse);
 
-        mockMvc.perform(put("/api/user/delete/{userId}", userId))
+        UserIdRequest request = UserIdRequest.builder()
+                .id(userId.toString())
+                .build();
+
+        mockMvc.perform(put("/api/user/delete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("owner@example.com"));
     }
@@ -196,7 +211,13 @@ class UserControllerITest {
     void activateUserShouldReturnUser() throws Exception {
         when(userService.activateUser(userId.toString())).thenReturn(userResponse);
 
-        mockMvc.perform(put("/api/user/active/{userId}", userId))
+        UserIdRequest request = UserIdRequest.builder()
+                .id(userId.toString())
+                .build();
+
+        mockMvc.perform(put("/api/user/active")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("owner@example.com"));
     }
@@ -205,7 +226,13 @@ class UserControllerITest {
     void permanentlyDeleteShouldReturnTrue() throws Exception {
         when(userService.permanentlyDeleteUser(userId.toString())).thenReturn(true);
 
-        mockMvc.perform(delete("/api/user/permanentlyDelete/{userId}", userId))
+        UserIdRequest request = UserIdRequest.builder()
+                .id(userId.toString())
+                .build();
+
+        mockMvc.perform(delete("/api/user/permanentlyDelete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().string("true"));
     }

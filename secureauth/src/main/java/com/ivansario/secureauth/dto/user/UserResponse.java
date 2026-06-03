@@ -16,7 +16,9 @@ import lombok.Setter;
 @Builder
 @Schema(description = "User profile returned by the users endpoints")
 public class UserResponse {
-
+    
+    @Schema(description = "User identifier (UUID)", example = "11111111-1111-4111-8111-111111111111")
+    private String id;
     @Schema(description = "Username", example = "ivan.sario")
     private String username;
     @Schema(description = "Email address", example = "ivan@example.com")

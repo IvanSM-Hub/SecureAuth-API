@@ -3,6 +3,7 @@ package com.ivansario.secureauth.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ivansario.secureauth.dto.user.UserIdRequest;
 import com.ivansario.secureauth.dto.user.UpdateUserProfileRequest;
 import com.ivansario.secureauth.dto.user.UpdateUserRoleRequest;
 import com.ivansario.secureauth.dto.user.UserResponse;
@@ -27,7 +28,6 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 
 
@@ -69,11 +69,24 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
-    @GetMapping("/{userId}")
-    @PreAuthorize(value = "hasRole('ADMIN') or @userSecurity.isOwner(#userId)")
+    @GetMapping("/one")
+    @PreAuthorize(value = "hasRole('ADMIN') or @userSecurity.isOwner(#request.id)")
     @Operation(
         summary = "Get one user by id",
-        description = "Returns a user by their identifier."
+        description = "Returns a user by their identifier sent in the request body."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        required = true,
+        description = "Payload with the user id",
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = UserIdRequest.class),
+            examples = @ExampleObject(value = """
+                {
+                  \"id\": \"7f84a249-f0f6-4cf8-a464-82f6fd4aab8f\"
+                }
+                """)
+        )
     )
     @ApiResponses({
         @ApiResponse(
@@ -106,15 +119,23 @@ public class UserController {
                 """))
         )
     })
-    public ResponseEntity<UserResponse> getUser(@PathVariable String userId) {
-        return ResponseEntity.ok(userService.getUserById(userId));
+    public ResponseEntity<UserResponse> getUser(@Valid @RequestBody UserIdRequest request) {
+        return ResponseEntity.ok(userService.getUserById(request.getId()));
     }
 
-    @PutMapping("/update/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or @userSecurity.isOwner(#userId)")
+    @PutMapping("/update-user")
+    @PreAuthorize("hasRole('ADMIN') or @userSecurity.isOwner(#request.id)")
     @Operation(
         summary = "Update user profile",
-        description = "Updates a user when the caller is an admin or the owner of the account."
+        description = "Updates a user profile; the target user id must be included in the DTO body."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        required = true,
+        description = "Payload with user id and profile fields to update",
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = UpdateUserProfileRequest.class)
+        )
     )
     @ApiResponses({
                 @ApiResponse(
@@ -174,15 +195,23 @@ public class UserController {
                                 """))
                 )
     })
-    public ResponseEntity<UserResponse> updateUserProfile(@PathVariable String userId, @Valid @RequestBody UpdateUserProfileRequest request) {
-        return ResponseEntity.ok(userService.updateUserProfile(userId, request));
+    public ResponseEntity<UserResponse> updateUserProfile(@Valid @RequestBody UpdateUserProfileRequest request) {
+        return ResponseEntity.ok(userService.updateUserProfile(request));
     }
     
-    @PutMapping("/role/{userId}")
+    @PutMapping("/update-role")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
         summary = "Update user role",
-        description = "Updates a user's role."
+        description = "Updates a user's role; the target user id must be included in the DTO body."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        required = true,
+        description = "Payload with user id and the new role",
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = UpdateUserRoleRequest.class)
+        )
     )
     @ApiResponses({
         @ApiResponse(
@@ -227,15 +256,23 @@ public class UserController {
                 """))
         )
     })
-    public ResponseEntity<UserResponse> updateRoleUser(@PathVariable String userId, @Valid @RequestBody UpdateUserRoleRequest request) {
-        return ResponseEntity.ok(userService.updateUserRole(userId, request));
+    public ResponseEntity<UserResponse> updateRoleUser(@Valid @RequestBody UpdateUserRoleRequest request) {
+        return ResponseEntity.ok(userService.updateUserRole(request));
     }
 
-    @PutMapping("/delete/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or @userSecurity.isOwner(#userId)")
+    @PutMapping("/delete")
+    @PreAuthorize("hasRole('ADMIN') or @userSecurity.isOwner(#request.id)")
     @Operation(
         summary = "Soft delete user",
-        description = "Marks a user as deleted without removing the record."
+        description = "Marks a user as deleted without removing the record; user id is sent in DTO body."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        required = true,
+        description = "Payload with the user id",
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = UserIdRequest.class)
+        )
     )
     @ApiResponses({
         @ApiResponse(
@@ -280,15 +317,23 @@ public class UserController {
                 """))
         )
     })
-    public ResponseEntity<UserResponse> virtualDeleteUser(@PathVariable String userId) {
-        return ResponseEntity.ok(userService.virtualDeleteUser(userId));
+    public ResponseEntity<UserResponse> virtualDeleteUser(@Valid @RequestBody UserIdRequest request) {
+        return ResponseEntity.ok(userService.virtualDeleteUser(request.getId()));
     }
 
-    @PutMapping("/active/{userId}")
+    @PutMapping("/active")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
         summary = "Activate user",
-        description = "Reactivates a previously disabled user."
+        description = "Reactivates a previously disabled user; user id is sent in DTO body."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        required = true,
+        description = "Payload with the user id",
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = UserIdRequest.class)
+        )
     )
     @ApiResponses({
         @ApiResponse(
@@ -321,15 +366,23 @@ public class UserController {
                 """))
         )
     })
-    public ResponseEntity<UserResponse> activateUser(@PathVariable String userId) {
-        return ResponseEntity.ok(userService.activateUser(userId));
+    public ResponseEntity<UserResponse> activateUser(@Valid @RequestBody UserIdRequest request) {
+        return ResponseEntity.ok(userService.activateUser(request.getId()));
     }
 
-    @DeleteMapping("/permanentlyDelete/{userId}")
+    @DeleteMapping("/permanentlyDelete")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
         summary = "Permanently delete user",
-        description = "Permanently removes a user from the database."
+        description = "Permanently removes a user from the database; user id is sent in DTO body."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        required = true,
+        description = "Payload with the user id",
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(implementation = UserIdRequest.class)
+        )
     )
     @ApiResponses({
         @ApiResponse(
@@ -362,8 +415,8 @@ public class UserController {
                 """))
         )
     })
-    public ResponseEntity<Boolean> permanentlyDeleteUser(@PathVariable String userId) {
-        return ResponseEntity.ok(userService.permanentlyDeleteUser(userId));
+    public ResponseEntity<Boolean> permanentlyDeleteUser(@Valid @RequestBody UserIdRequest request) {
+        return ResponseEntity.ok(userService.permanentlyDeleteUser(request.getId()));
     }
 
 }

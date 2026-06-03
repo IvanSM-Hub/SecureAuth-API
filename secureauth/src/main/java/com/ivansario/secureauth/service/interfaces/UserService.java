@@ -20,8 +20,8 @@ public interface UserService extends UserDetailsService {
     boolean existsUser(String userKey);
     User changePassword(User user, String newPassword);
     UserResponse getUserById(String userId);
-    UserResponse updateUserProfile(String userId, UpdateUserProfileRequest updateUser);
-    UserResponse updateUserRole(String userId, UpdateUserRoleRequest updateUser);
+    UserResponse updateUserProfile(UpdateUserProfileRequest updateUser);
+    UserResponse updateUserRole(UpdateUserRoleRequest updateUser);
     UserResponse virtualDeleteUser(String userId);
     UserResponse activateUser(String userId);
     boolean permanentlyDeleteUser(String userId);

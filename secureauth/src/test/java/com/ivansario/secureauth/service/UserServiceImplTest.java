@@ -418,13 +418,14 @@ class UserServiceImplTest {
         @Test
         void shouldUpdateUserRoleSuccessfully() {
             UpdateUserRoleRequest updateRoleRequest = UpdateUserRoleRequest.builder()
+                .id(testUser.getId().toString())
                 .roleName(RoleEnum.ROLE_USER.name())
                 .build();
 
             when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
             when(roleService.findByName(RoleEnum.ROLE_USER)).thenReturn(roleUser);
 
-            UserResponse response = userService.updateUserRole(testUser.getId().toString(), updateRoleRequest);
+            UserResponse response = userService.updateUserRole(updateRoleRequest);
 
             assertEquals(RoleEnum.ROLE_USER.name(), response.getRole());
             assertSame(roleUser, testUser.getRole());
@@ -436,6 +437,7 @@ class UserServiceImplTest {
         @Test
         void shouldThrowWhenUserNotFound() {
             UpdateUserRoleRequest updateRoleRequest = UpdateUserRoleRequest.builder()
+                .id(testUser.getId().toString())
                 .roleName(RoleEnum.ROLE_USER.name())
                 .build();
 
@@ -443,7 +445,7 @@ class UserServiceImplTest {
 
             assertThrows(
                 UserNotFoundException.class,
-                () -> userService.updateUserRole(testUser.getId().toString(), updateRoleRequest)
+                () -> userService.updateUserRole(updateRoleRequest)
             );
 
             verify(userRepository).findById(testUser.getId());

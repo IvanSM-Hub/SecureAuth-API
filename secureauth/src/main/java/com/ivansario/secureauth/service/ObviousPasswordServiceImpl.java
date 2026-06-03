@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.ivansario.secureauth.dto.protect.ObviousPasswordIdRequest;
 import com.ivansario.secureauth.entity.ObviousPassword;
 import com.ivansario.secureauth.repository.ObviousPasswordRepository;
 import com.ivansario.secureauth.service.interfaces.ObviousPasswordService;
@@ -26,12 +27,13 @@ public class ObviousPasswordServiceImpl implements ObviousPasswordService {
 
     @Override
     @Transactional
-    public boolean deleteObviousPassword(UUID id) {
-        ObviousPassword obviousPassword = findObviousPasswordById(id);
+    public boolean deleteObviousPassword(ObviousPasswordIdRequest request) {
+        ObviousPassword obviousPassword = findObviousPasswordById(request);
         if (obviousPassword == null) {
             return false;
         }
 
+        UUID id = UUID.fromString(request.getId());
         obviousPasswordRepository.delete(obviousPassword);
         return !obviousPasswordRepository.existsById(id);
     }
@@ -42,7 +44,8 @@ public class ObviousPasswordServiceImpl implements ObviousPasswordService {
     }
 
     @Override
-    public ObviousPassword findObviousPasswordById(UUID id) {
+    public ObviousPassword findObviousPasswordById(ObviousPasswordIdRequest request) {
+        UUID id = UUID.fromString(request.getId());
         return obviousPasswordRepository.findById(id).orElse(null);
     }
 
