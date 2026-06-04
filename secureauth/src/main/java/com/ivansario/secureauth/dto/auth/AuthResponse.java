@@ -14,6 +14,8 @@ import lombok.Setter;
 @Builder
 @Schema(description = "Authentication response containing profile data and JWT tokens")
 public class AuthResponse {
+    @Schema(description = "User identifier (UUID)", example = "11111111-1111-4111-8111-111111111111")
+    private String id;
     @Schema(description = "Authenticated username", example = "ivan.sario")
     private String username;
     @Schema(description = "User email", example = "ivan@example.com")

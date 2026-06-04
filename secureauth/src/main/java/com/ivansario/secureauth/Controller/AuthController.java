@@ -9,10 +9,7 @@ import com.ivansario.secureauth.dto.auth.InitialAdminLoginRequest;
 import com.ivansario.secureauth.dto.auth.LoginRequest;
 import com.ivansario.secureauth.dto.auth.NewPasswordUserRequest;
 import com.ivansario.secureauth.dto.auth.RefreshTokenRequest;
-import com.ivansario.secureauth.dto.user.CreateUserRequest;
-import com.ivansario.secureauth.dto.user.RegisterResponse;
 import com.ivansario.secureauth.service.interfaces.AuthService;
-import com.ivansario.secureauth.util.RoleEnum;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -160,68 +157,6 @@ public class AuthController {
         String ipAddress = request.getRemoteAddr();
         String userAgent = request.getHeader("User-Agent");
         return ResponseEntity.ok(authService.initialAdminLogin(loginRequest, ipAddress, userAgent));
-    }
-
-    /**
-     * POST /register endpoint - creates a new user with the USER role.
-     *
-     * @param requestCreateUser user creation data
-     * @param request HTTP servlet request used to capture IP and User-Agent
-     * @return ResponseEntity with {@link RegisterResponse} containing the new user's information
-     */
-    @PostMapping("/register")
-    @Operation(
-        summary = "Register user",
-        description = "Creates a new user with the ROLE_USER role and returns the registered data."
-    )
-    @ApiResponses({
-                @ApiResponse(
-                        responseCode = "200",
-                description = "User registered successfully",
-                        content = @Content(schema = @Schema(implementation = RegisterResponse.class))
-                ),
-                @ApiResponse(
-                        responseCode = "400",
-                description = "Invalid registration data",
-                        content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
-                                {
-                                    "timestamp": "2026-05-27T10:15:30",
-                                    "status": 400,
-                                    "error": "Bad Request",
-                                    "message": "Validation failed",
-                                    "errors": {
-                                        "email": "Email is required",
-                                        "password": "Password must be between 8 and 128 characters"
-                                    }
-                                }
-                                """))
-                ),
-                @ApiResponse(
-                        responseCode = "409",
-                    description = "User already exists",
-                        content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
-                                {
-                                    "timestamp": "2026-05-27T10:15:30",
-                                    "status": 409,
-                                    "error": "Conflict",
-                                    "message": "User already exists"
-                                }
-                                """))
-                )
-    })
-    public ResponseEntity<RegisterResponse> registerUser(
-        @Valid @RequestBody 
-        CreateUserRequest requestCreateUser,
-        HttpServletRequest request
-    ) {
-        String ipAddress = request.getRemoteAddr();
-        String userAgent = request.getHeader("User-Agent");
-        return ResponseEntity.ok(authService.register(requestCreateUser, 
-                ipAddress, 
-                userAgent, 
-                RoleEnum.ROLE_USER
-            )
-        );
     }
     
     /**

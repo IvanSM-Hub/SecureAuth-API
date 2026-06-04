@@ -40,6 +40,7 @@ public class SecurityConfig {
     * - Uses stateless sessions
     * - Allows authentication endpoints and requires authentication for the rest
     * - Adds the JWT filter before the form authentication filter
+    * 
      */
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) {
@@ -53,7 +54,7 @@ public class SecurityConfig {
             .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
             .requestMatchers(
                 "/api/auth/login",
-                "/api/auth/register",
+                "/api/user/register",
                 "/api/auth/admin-init"
             ).permitAll()
             .anyRequest().authenticated()

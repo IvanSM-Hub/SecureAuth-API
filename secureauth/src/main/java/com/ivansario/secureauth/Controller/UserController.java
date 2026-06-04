@@ -4,12 +4,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ivansario.secureauth.dto.user.UserIdRequest;
+import com.ivansario.secureauth.dto.user.CreateUserRequest;
+import com.ivansario.secureauth.dto.user.RegisterResponse;
 import com.ivansario.secureauth.dto.user.UpdateUserProfileRequest;
 import com.ivansario.secureauth.dto.user.UpdateUserRoleRequest;
 import com.ivansario.secureauth.dto.user.UserResponse;
 import com.ivansario.secureauth.service.interfaces.UserService;
+import com.ivansario.secureauth.util.RoleEnum;
 
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RequestBody;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -28,6 +32,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 
 
@@ -121,6 +126,68 @@ public class UserController {
     })
     public ResponseEntity<UserResponse> getUser(@Valid @RequestBody UserIdRequest request) {
         return ResponseEntity.ok(userService.getUserById(request.getId()));
+    }
+
+    /**
+     * POST /register endpoint - creates a new user with the USER role.
+     *
+     * @param requestCreateUser user creation data
+     * @param request HTTP servlet request used to capture IP and User-Agent
+     * @return ResponseEntity with {@link RegisterResponse} containing the new user's information
+     */
+    @PostMapping("/register")
+    @Operation(
+        summary = "Register user",
+        description = "Creates a new user with the ROLE_USER role and returns the registered data."
+    )
+    @ApiResponses({
+                @ApiResponse(
+                        responseCode = "200",
+                description = "User registered successfully",
+                        content = @Content(schema = @Schema(implementation = RegisterResponse.class))
+                ),
+                @ApiResponse(
+                        responseCode = "400",
+                description = "Invalid registration data",
+                        content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                                {
+                                    "timestamp": "2026-05-27T10:15:30",
+                                    "status": 400,
+                                    "error": "Bad Request",
+                                    "message": "Validation failed",
+                                    "errors": {
+                                        "email": "Email is required",
+                                        "password": "Password must be between 8 and 128 characters"
+                                    }
+                                }
+                                """))
+                ),
+                @ApiResponse(
+                        responseCode = "409",
+                    description = "User already exists",
+                        content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                                {
+                                    "timestamp": "2026-05-27T10:15:30",
+                                    "status": 409,
+                                    "error": "Conflict",
+                                    "message": "User already exists"
+                                }
+                                """))
+                )
+    })
+    public ResponseEntity<RegisterResponse> registerUser(
+        @Valid @RequestBody 
+        CreateUserRequest requestCreateUser,
+        HttpServletRequest request
+    ) {
+        String ipAddress = request.getRemoteAddr();
+        String userAgent = request.getHeader("User-Agent");
+        return ResponseEntity.ok(userService.register(requestCreateUser, 
+                ipAddress, 
+                userAgent, 
+                RoleEnum.ROLE_USER
+            )
+        );
     }
 
     @PutMapping("/update-user")

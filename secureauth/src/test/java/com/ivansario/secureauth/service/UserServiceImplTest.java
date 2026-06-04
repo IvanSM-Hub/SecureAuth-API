@@ -27,6 +27,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import com.ivansario.secureauth.dto.user.CreateUserRequest;
+import com.ivansario.secureauth.dto.user.RegisterResponse;
 import com.ivansario.secureauth.dto.user.UpdateUserRoleRequest;
 import com.ivansario.secureauth.dto.user.UserResponse;
 import com.ivansario.secureauth.entity.RefreshToken;
@@ -34,6 +35,8 @@ import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.exception.InvalidCredentialsException;
+import com.ivansario.secureauth.exception.UserCreationException;
+import com.ivansario.secureauth.exception.UserExistsException;
 import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.repository.UserRepository;
 import com.ivansario.secureauth.service.interfaces.PasswordSecurityService;
@@ -146,6 +149,64 @@ class UserServiceImplTest {
             .isActive(testRoleUser.isEnabled())
             .build()
         );
+    }
+
+    @Nested
+    class RegisterTests {
+
+        private final String ipAddress = "192.168.1.1";
+        private final String userAgent = "Mozilla/5.0...";
+
+        @Test
+        void shouldRegisterUserSuccessfully() {
+            UUID generatedId = UUID.randomUUID();
+
+            when(userRepository.existsByEmail(email)).thenReturn(false);
+            when(roleService.findByName(RoleEnum.ROLE_USER)).thenReturn(roleUser);
+            when(passwordSecurityService.encryptPassword(createUserRequest.getPassword())).thenReturn(hashedPassword);
+            when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+                User userToPersist = invocation.getArgument(0);
+                userToPersist.setId(generatedId);
+                return userToPersist;
+            });
+
+            RegisterResponse response = userService.register(createUserRequest, ipAddress, userAgent, RoleEnum.ROLE_USER);
+
+            assertEquals(username, response.getUsername());
+            assertEquals(email, response.getEmail());
+            assertEquals(RoleEnum.ROLE_USER.name(), response.getRole());
+            verify(roleService).findByName(RoleEnum.ROLE_USER);
+            verify(passwordSecurityService).encryptPassword(createUserRequest.getPassword());
+            verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        void shouldThrowWhenUserAlreadyExists() {
+            when(userRepository.existsByEmail(email)).thenReturn(true);
+
+            assertThrows(UserExistsException.class,
+                () -> userService.register(createUserRequest, ipAddress, userAgent, RoleEnum.ROLE_USER));
+        }
+
+        @Test
+        void shouldThrowWhenRoleNotFound() {
+            when(userRepository.existsByEmail(email)).thenReturn(false);
+            when(roleService.findByName(RoleEnum.ROLE_ADMIN)).thenReturn(null);
+
+            assertThrows(IllegalArgumentException.class,
+                () -> userService.register(createUserRequest, ipAddress, userAgent, RoleEnum.ROLE_ADMIN));
+        }
+
+        @Test
+        void shouldThrowWhenUserCreationFails() {
+            when(userRepository.existsByEmail(email)).thenReturn(false);
+            when(roleService.findByName(RoleEnum.ROLE_USER)).thenReturn(roleUser);
+            when(passwordSecurityService.encryptPassword(createUserRequest.getPassword())).thenReturn(hashedPassword);
+            when(userRepository.save(any(User.class))).thenReturn(null);
+
+            assertThrows(UserCreationException.class,
+                () -> userService.register(createUserRequest, ipAddress, userAgent, RoleEnum.ROLE_USER));
+        }
     }
 
     @Nested

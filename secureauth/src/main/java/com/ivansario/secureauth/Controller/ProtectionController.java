@@ -184,4 +184,62 @@ public class ProtectionController {
         return ResponseEntity.ok(protectionService.blockByIp(request));
     }
 
+    @GetMapping("/unblock-user")
+    @PreAuthorize(value = "hasRole('ADMIN')")
+    @Operation(
+        summary = "Block user by username",
+        description = "Applies an administrative block to the provided username and returns the updated protection details."
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Protection retrieved successfully",
+            content = @Content(schema = @Schema(implementation = ProtectionResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized access",
+            content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                {
+                  "timestamp": "2026-05-27T10:15:30",
+                  "status": 401,
+                  "error": "Unauthorized",
+                  "message": "Unauthorized"
+                }
+                """))
+        )
+    })
+    public ResponseEntity<ProtectionResponse> unblockByUsername(@RequestBody ProtectionUsernameRequest request) {
+        return ResponseEntity.ok(protectionService.unblockByUsername(request));
+    }
+
+    @GetMapping("/unblock-ip")
+    @PreAuthorize(value = "hasRole('ADMIN')")
+    @Operation(
+        summary = "Block by IP",
+        description = "Applies an administrative block to the provided IP address and returns the updated protection details."
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "Protection retrieved successfully",
+            content = @Content(schema = @Schema(implementation = ProtectionResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized access",
+            content = @Content(mediaType = "application/json", examples = @ExampleObject(value = """
+                {
+                  "timestamp": "2026-05-27T10:15:30",
+                  "status": 401,
+                  "error": "Unauthorized",
+                  "message": "Unauthorized"
+                }
+                """))
+        )
+    })
+    public ResponseEntity<ProtectionResponse> unblockByIp(@RequestBody ProtectionIpRequest request) {
+        return ResponseEntity.ok(protectionService.unblockByIp(request));
+    }
+
 }

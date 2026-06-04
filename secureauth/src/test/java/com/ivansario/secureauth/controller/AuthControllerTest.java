@@ -1,8 +1,6 @@
 package com.ivansario.secureauth.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -16,11 +14,8 @@ import com.ivansario.secureauth.dto.auth.AuthResponse;
 import com.ivansario.secureauth.dto.auth.LoginRequest;
 import com.ivansario.secureauth.dto.auth.NewPasswordUserRequest;
 import com.ivansario.secureauth.dto.auth.RefreshTokenRequest;
-import com.ivansario.secureauth.dto.user.CreateUserRequest;
-import com.ivansario.secureauth.dto.user.RegisterResponse;
 import com.ivansario.secureauth.exception.GlobalExceptionHandler;
 import com.ivansario.secureauth.service.interfaces.AuthService;
-import com.ivansario.secureauth.util.RoleEnum;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -44,7 +39,6 @@ class AuthControllerITest {
     private final JsonMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
 
     private LoginRequest loginRequest;
-    private CreateUserRequest createUserRequest;
     private RefreshTokenRequest refreshTokenRequest;
     private NewPasswordUserRequest newPasswordUserRequest;
 
@@ -61,14 +55,6 @@ class AuthControllerITest {
 
         loginRequest = LoginRequest.builder()
                 .username("ivan.sario")
-                .password("Password123!")
-                .build();
-
-        createUserRequest = CreateUserRequest.builder()
-                .email("ivan@example.com")
-                .username("ivan.sario")
-                .name("Ivan")
-                .surname("Sario")
                 .password("Password123!")
                 .build();
 
@@ -108,46 +94,6 @@ class AuthControllerITest {
                 .andExpect(jsonPath("$.accessToken").value("access-token"))
                 .andExpect(jsonPath("$.refreshToken").value("refresh-token"));
     }
-
-    @Test
-    void registerShouldCreateUser() throws Exception {
-        RegisterResponse response = RegisterResponse.builder()
-                .username("ivan.sario")
-                .email("ivan@example.com")
-                .role("ROLE_USER")
-                .build();
-
-        when(authService.register(any(CreateUserRequest.class), anyString(), anyString(), eq(RoleEnum.ROLE_USER)))
-                .thenReturn(response);
-
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .header("User-Agent", "JUnit")
-                        .content(objectMapper.writeValueAsString(createUserRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("ivan.sario"))
-                .andExpect(jsonPath("$.email").value("ivan@example.com"))
-                .andExpect(jsonPath("$.role").value("ROLE_USER"));
-    }
-
-        @Test
-        void registerShouldRejectWeakPassword() throws Exception {
-                CreateUserRequest weakPasswordRequest = CreateUserRequest.builder()
-                                .email("ivan@example.com")
-                                .username("ivan.sario")
-                                .name("Ivan")
-                                .surname("Sario")
-                                .password("password1!")
-                                .build();
-
-                mockMvc.perform(post("/api/auth/register")
-                                                .contentType(MediaType.APPLICATION_JSON)
-                                                .header("User-Agent", "JUnit")
-                                                .content(objectMapper.writeValueAsString(weakPasswordRequest)))
-                                .andExpect(status().isBadRequest())
-                                .andExpect(jsonPath("$.message").value("Validation failed"))
-                                                .andExpect(jsonPath("$.errors.password").value(org.hamcrest.Matchers.containsString("one uppercase letter")));
-        }
 
     @Test
     void logoutShouldReturnNoContent() throws Exception {

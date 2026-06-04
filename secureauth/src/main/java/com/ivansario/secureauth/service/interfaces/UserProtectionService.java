@@ -173,4 +173,8 @@ public interface UserProtectionService {
 	 */
 	ProtectionResponse blockByIp(ProtectionIpRequest protectionIp);
 
+	ProtectionResponse unblockByUsername(ProtectionUsernameRequest protectionUsername);
+	
+	ProtectionResponse unblockByIp(ProtectionIpRequest protectionIp);
+
 }

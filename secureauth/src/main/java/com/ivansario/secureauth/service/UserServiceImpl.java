@@ -14,6 +14,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import com.ivansario.secureauth.dto.user.CreateUserRequest;
+import com.ivansario.secureauth.dto.user.RegisterResponse;
 import com.ivansario.secureauth.dto.user.UpdateUserProfileRequest;
 import com.ivansario.secureauth.dto.user.UpdateUserRoleRequest;
 import com.ivansario.secureauth.dto.user.UserResponse;
@@ -49,6 +50,48 @@ public class UserServiceImpl implements UserService {
     private final RoleService roleService;
     private final UserSessionService userSessionService;
     private final RefreshTokenService refreshTokenService;
+
+    /**
+    * Registers a new user with the specified role.
+    *
+    * @param request   data to create the user
+    * @param ipAddress client IP address
+    * @param userAgent client info (User-Agent)
+    * @param roleType  role to assign to the user
+    * @return {@link RegisterResponse} with created user info
+     */
+    @Override
+    @Transactional
+    public RegisterResponse register(
+            CreateUserRequest request,
+            String ipAddress,
+            String userAgent,
+            RoleEnum roleType) {
+
+        if (existsUser(request.getEmail())) {
+            throw new UserExistsException("Email already registered");
+        }
+
+        Role role = roleService.findByName(roleType);
+        if (role == null) {
+            throw new IllegalArgumentException("Role not found: " + roleType);
+        }
+
+        User user = createUser(request, role);
+        if (user == null) {
+            throw new UserCreationException("There was somthing wrong traying to create the user");
+        }
+
+        user.setRole(role);
+
+        log.info("User {} registered successfully. Please log in to obtain access.", user.getUsername());
+
+        return RegisterResponse.builder()
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole().getName().name())
+                .build();
+    }
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {

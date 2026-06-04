@@ -37,6 +37,12 @@ public class GlobalExceptionHandler extends Exception {
 		return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
 	}
 
+	@ExceptionHandler(InvalidPasswordProvided.class)
+	public ResponseEntity<Map<String, Object>> handleInvalidPassword(InvalidPasswordProvided ex) {
+		log.warn("Password is too common or obvious");
+		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+	}
+
 	@ExceptionHandler(TokenGenerationException.class)
 	public ResponseEntity<Map<String, Object>> handleTokenGeneration(TokenGenerationException ex) {
 		log.error("Error generating token: {}", ex.getMessage(), ex);

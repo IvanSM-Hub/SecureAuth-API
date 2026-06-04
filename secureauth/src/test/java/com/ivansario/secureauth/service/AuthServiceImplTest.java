@@ -34,8 +34,6 @@ import com.ivansario.secureauth.dto.auth.AuthResponse;
 import com.ivansario.secureauth.dto.auth.LoginRequest;
 import com.ivansario.secureauth.dto.auth.NewPasswordUserRequest;
 import com.ivansario.secureauth.dto.auth.RefreshTokenRequest;
-import com.ivansario.secureauth.dto.user.CreateUserRequest;
-import com.ivansario.secureauth.dto.user.RegisterResponse;
 import com.ivansario.secureauth.entity.RefreshToken;
 import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
@@ -448,96 +446,6 @@ class AuthServiceImplTest {
             assertEquals(refreshToken, updatedSession.getRefreshToken());
             assertEquals(ipAddress, updatedSession.getIpAddress());
             assertEquals(userAgent, updatedSession.getDeviceInfo());
-        }
-    }
-
-    @Nested
-    class RegisterTests {
-
-        @Test
-        void shouldRegisterUserSuccessfully() {
-            CreateUserRequest registerRequest = CreateUserRequest.builder()
-                .email(email)
-                .username(username)
-                .password(password)
-                .build();
-
-            user.setRole(roleUser);
-            when(userService.existsUser(email)).thenReturn(false);
-            when(roleService.findByName(RoleEnum.ROLE_USER)).thenReturn(roleUser);
-            when(userService.createUser(registerRequest, roleUser)).thenReturn(user);
-
-            RegisterResponse response = authService.register(registerRequest, ipAddress, userAgent, RoleEnum.ROLE_USER);
-
-            assertNotNull(response);
-            assertEquals(username, response.getUsername());
-            assertEquals(email, response.getEmail());
-            verify(userService).createUser(registerRequest, roleUser);
-        }
-
-        @Test
-        void shouldThrowExceptionWhenEmailAlreadyExists() {
-            CreateUserRequest registerRequest = CreateUserRequest.builder()
-                .email(email)
-                .username(username)
-                .password(password)
-                .build();
-
-            when(userService.existsUser(email)).thenReturn(true);
-
-            assertThrows(RuntimeException.class,
-                () -> authService.register(registerRequest, ipAddress, userAgent, RoleEnum.ROLE_USER));
-            verify(userService, never()).createUser(any(CreateUserRequest.class), any(Role.class));
-        }
-
-        @Test
-        void shouldThrowExceptionWhenRoleNotFound() {
-            CreateUserRequest registerRequest = CreateUserRequest.builder()
-                .email(email)
-                .username(username)
-                .password(password)
-                .build();
-
-            when(userService.existsUser(email)).thenReturn(false);
-            when(roleService.findByName(RoleEnum.ROLE_ADMIN)).thenReturn(null);
-
-            assertThrows(RuntimeException.class,
-                () -> authService.register(registerRequest, ipAddress, userAgent, RoleEnum.ROLE_ADMIN));
-        }
-
-        @Test
-        void shouldThrowExceptionWhenUserCreationFails() {
-            CreateUserRequest registerRequest = CreateUserRequest.builder()
-                .email(email)
-                .username(username)
-                .password(password)
-                .build();
-
-            when(userService.existsUser(email)).thenReturn(false);
-            when(roleService.findByName(RoleEnum.ROLE_USER)).thenReturn(roleUser);
-            when(userService.createUser(registerRequest, roleUser)).thenReturn(null);
-
-            assertThrows(RuntimeException.class,
-                () -> authService.register(registerRequest, ipAddress, userAgent, RoleEnum.ROLE_USER));
-        }
-
-        @Test
-        void shouldAssignCorrectRoleToNewUser() {
-            CreateUserRequest registerRequest = CreateUserRequest.builder()
-                .email(email)
-                .username(username)
-                .password(password)
-                .build();
-
-            user.setRole(roleAdmin);
-            when(userService.existsUser(email)).thenReturn(false);
-            when(roleService.findByName(RoleEnum.ROLE_ADMIN)).thenReturn(roleAdmin);
-            when(userService.createUser(registerRequest, roleAdmin)).thenReturn(user);
-
-            RegisterResponse response = authService.register(registerRequest, ipAddress, userAgent, RoleEnum.ROLE_ADMIN);
-
-            assertNotNull(response);
-            assertEquals(RoleEnum.ROLE_ADMIN.name(), response.getRole());
         }
     }
 

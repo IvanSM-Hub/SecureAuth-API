@@ -67,15 +67,15 @@ class UserProtectionServiceImplTest {
             .enabled(true)
             .build();
 
-        ipProtection = UserProtection.builder()
+        userProtection = UserProtection.builder()
+            .user(user)
             .ipOrigin(ip)
             .numTrys(2)
             .lastTry(LocalDateTime.now().minusMinutes(1))
             .active(false)
             .build();
 
-        userProtection = UserProtection.builder()
-            .user(user)
+        ipProtection = UserProtection.builder()
             .ipOrigin(ip)
             .numTrys(2)
             .lastTry(LocalDateTime.now().minusMinutes(1))
@@ -85,33 +85,41 @@ class UserProtectionServiceImplTest {
 
     @Test
     void shouldRegisterFailedAttemptForIpAndUser() {
-        when(userProtectionRepository.findByIpOrigin(ip)).thenReturn(Optional.of(ipProtection));
+        when(userProtectionRepository.findByIpOrigin(ip)).thenReturn(Optional.empty());
         when(userProtectionRepository.findByUser_Username(username)).thenReturn(Optional.of(userProtection));
 
         userProtectionService.registerFailedAttempt(username, ip);
 
         ArgumentCaptor<UserProtection> captor = ArgumentCaptor.forClass(UserProtection.class);
-        verify(userProtectionRepository, times(2)).save(captor.capture());
-        assertThat(captor.getAllValues()).hasSize(2);
-        assertThat(captor.getAllValues().get(0).getNumTrys()).isEqualTo(3);
-        assertThat(captor.getAllValues().get(1).getNumTrys()).isEqualTo(3);
+        verify(userProtectionRepository, times(1)).save(captor.capture());
+        assertThat(captor.getValue().getNumTrys()).isEqualTo(3);
+        assertThat(captor.getValue().getIpOrigin()).isEqualTo(ip);
+    }
+
+    @Test
+    void shouldPersistIpAttemptEvenWhenUserDoesNotExist() {
+        when(userProtectionRepository.findByIpOrigin(ip)).thenReturn(Optional.of(ipProtection));
+
+        userProtectionService.registerFailedAttempt(username, ip);
+
+        ArgumentCaptor<UserProtection> captor = ArgumentCaptor.forClass(UserProtection.class);
+        verify(userProtectionRepository, times(1)).save(captor.capture());
+        assertThat(captor.getValue().getIpOrigin()).isEqualTo(ip);
+        assertThat(captor.getValue().getNumTrys()).isEqualTo(3);
+        verify(userProtectionRepository, never()).save(userProtection);
     }
 
     @Test
     void shouldBlockWhenMaxAttemptsReached() {
         ipProtection.setNumTrys(4);
-        userProtection.setNumTrys(4);
         when(userProtectionRepository.findByIpOrigin(ip)).thenReturn(Optional.of(ipProtection));
-        when(userProtectionRepository.findByUser_Username(username)).thenReturn(Optional.of(userProtection));
 
         userProtectionService.registerFailedAttempt(username, ip);
 
         assertThat(ipProtection.getNumTrys()).isEqualTo(5);
         assertThat(ipProtection.getBloquedAt()).isNotNull();
         assertThat(ipProtection.isActive()).isTrue();
-        assertThat(userProtection.getNumTrys()).isEqualTo(5);
-        assertThat(userProtection.getBloquedAt()).isNotNull();
-        assertThat(userProtection.isActive()).isTrue();
+        verify(userProtectionRepository, never()).save(userProtection);
     }
 
     @Test

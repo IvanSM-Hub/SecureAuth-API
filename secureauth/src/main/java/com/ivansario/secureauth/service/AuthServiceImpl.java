@@ -15,10 +15,7 @@ import com.ivansario.secureauth.dto.auth.InitialAdminLoginRequest;
 import com.ivansario.secureauth.dto.auth.LoginRequest;
 import com.ivansario.secureauth.dto.auth.NewPasswordUserRequest;
 import com.ivansario.secureauth.dto.auth.RefreshTokenRequest;
-import com.ivansario.secureauth.dto.user.CreateUserRequest;
-import com.ivansario.secureauth.dto.user.RegisterResponse;
 import com.ivansario.secureauth.entity.RefreshToken;
-import com.ivansario.secureauth.entity.Role;
 import com.ivansario.secureauth.entity.User;
 import com.ivansario.secureauth.entity.UserSession;
 import com.ivansario.secureauth.exception.InvalidConfirmationPasswordException;
@@ -27,17 +24,14 @@ import com.ivansario.secureauth.exception.InvalidRefreshTokenException;
 import com.ivansario.secureauth.exception.RefreshTokenExpiredException;
 import com.ivansario.secureauth.exception.SessionCreationException;
 import com.ivansario.secureauth.exception.TokenGenerationException;
-import com.ivansario.secureauth.exception.UserExistsException;
 import com.ivansario.secureauth.exception.UserNotFoundException;
 import com.ivansario.secureauth.exception.UserProtectionException;
 import com.ivansario.secureauth.security.JwtUtil;
 import com.ivansario.secureauth.service.interfaces.AuthService;
 import com.ivansario.secureauth.service.interfaces.RefreshTokenService;
-import com.ivansario.secureauth.service.interfaces.RoleService;
 import com.ivansario.secureauth.service.interfaces.UserProtectionService;
 import com.ivansario.secureauth.service.interfaces.UserService;
 import com.ivansario.secureauth.service.interfaces.UserSessionService;
-import com.ivansario.secureauth.util.RoleEnum;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,13 +57,12 @@ public class AuthServiceImpl implements AuthService {
     private final UserService userService;
     private final RefreshTokenService refreshTokenService;
     private final UserSessionService userSessionService;
-    private final RoleService roleService;
     private final UserProtectionService userProtectionService;
 
     
     @Override
     public AuthResponse initialAdminLogin(InitialAdminLoginRequest request, String ipAddress, String userAgent) {
-        if (!"admin@admin.com".equalsIgnoreCase(request.getUsername())) {
+        if (!"admin@admin.com".equalsIgnoreCase(request.getUsername()) || !"admin".equalsIgnoreCase(request.getUsername())) {
             throw new UserProtectionException("The user may be admin");
         }
         LoginRequest loginRequest = LoginRequest.builder()
@@ -97,8 +90,8 @@ public class AuthServiceImpl implements AuthService {
         if (isBlockedUser) {
             throw new UserProtectionException("The user provided is blocked");
         }
-        Authentication authentication;
 
+        Authentication authentication;
         try {
             authentication = authenticate(request.getUsername(), request.getPassword());
         } catch (AuthenticationException e) {
@@ -200,46 +193,6 @@ public class AuthServiceImpl implements AuthService {
                 .role(user.getRole() != null ? user.getRole().getName().name() : null)
                 .accessToken(newAccessToken)
                 .refreshToken(newToken.getToken())
-                .build();
-    }
-
-    /**
-    * Registers a new user with the specified role.
-    *
-    * @param request   data to create the user
-    * @param ipAddress client IP address
-    * @param userAgent client info (User-Agent)
-    * @param roleType  role to assign to the user
-    * @return {@link RegisterResponse} with created user info
-     */
-    @Override
-    @Transactional
-    public RegisterResponse register(
-            CreateUserRequest request,
-            String ipAddress,
-            String userAgent,
-            RoleEnum roleType) {
-
-        if (userService.existsUser(request.getEmail())) {
-            throw new UserExistsException("Email already registered");
-        }
-
-        Role role = roleService.findByName(roleType);
-        if (role == null) {
-            throw new IllegalArgumentException("Role not found: " + roleType);
-        }
-
-        User user = userService.createUser(request, role);
-        validateCreatedEntity(user, "User");
-
-        user.setRole(role);
-
-        log.info("User {} registered successfully. Please log in to obtain access.", user.getUsername());
-
-        return RegisterResponse.builder()
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .role(user.getRole().getName().name())
                 .build();
     }
 

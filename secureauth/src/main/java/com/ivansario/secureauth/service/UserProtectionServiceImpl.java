@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -208,6 +210,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
     }
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void registerFailedAttempt(String username, String ip) {
         if (username == null || username.isBlank() || ip == null || ip.isBlank()) {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
@@ -223,16 +226,18 @@ public class UserProtectionServiceImpl implements UserProtectionService {
 
         registerFailedAttemptInRedis(normalizedUsername, normalizedIp);
 
-        UserProtection ipProtection = userProtectionRepository.findByIpOrigin(normalizedIp)
-            .orElseGet(() -> buildIpProtection(normalizedIp, now));
-        UserProtection userProtection = userProtectionRepository.findByUser_Username(normalizedUsername)
-            .orElseGet(() -> buildUserProtection(normalizedUsername, normalizedIp, now));
+        UserProtection protection = userProtectionRepository.findByIpOrigin(normalizedIp)
+            .orElseGet(() -> {
+                return userProtectionRepository.findByUser_Username(normalizedUsername)
+                .orElseGet(() -> buildUserProtection(normalizedUsername, normalizedIp, now));
+            });
 
-        registerFailedAttemptOnProtection(ipProtection, now);
-        registerFailedAttemptOnProtection(userProtection, now);
+        registerFailedAttemptOnProtection(protection, now);
 
-        userProtectionRepository.save(ipProtection);
-        userProtectionRepository.save(userProtection);
+        UserProtection protectionSaved = userProtectionRepository.save(protection);
+        if (protectionSaved == null) {
+            throw new UserProtectionException("Unable to save the user faild attempt in db.");
+        }
     }
 
     private void registerFailedAttemptOnProtection(UserProtection protection, LocalDateTime now) {
@@ -496,20 +501,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             if (user == null) {
                 throw new UserNotFoundException("User it can't be found in the protection request");
             }
-            return ProtectionResponse.builder()
-            .ip(protection.getIpOrigin())
-            .numTrys(protection.getNumTrys())
-            .lastTry((protection.getLastTry()) == null ? null : protection.getLastTry().toString())
-            .bloquedAt((protection.getBloquedAt()) == null ? null : protection.getBloquedAt().toString())
-            .active(protection.isActive())
-            .username(user.getUsername())
-            .email(user.getEmail())
-            .enable(user.getEnabled())
-            .createAt((user.getCreatedAt() == null) ? null : user.getCreatedAt().toString())
-            .updatedAt((user.getUpdatedAt() == null) ? null :user.getUpdatedAt().toString())
-            .lastLogin((user.getLastLogin() == null) ? null :user.getLastLogin().toString())
-            .role(user.getRole())
-            .build();
+            return buildProtectionResponse(protection);
         }).toList();
     }
 
@@ -521,20 +513,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         if (user == null) {
             throw new UserNotFoundException("User it can't be found in the protection request");
         }
-        return ProtectionResponse.builder()
-            .ip(protection.getIpOrigin())
-            .numTrys(protection.getNumTrys())
-            .lastTry((protection.getLastTry()) == null ? null : protection.getLastTry().toString())
-            .bloquedAt((protection.getBloquedAt()) == null ? null : protection.getBloquedAt().toString())
-            .active(protection.isActive())
-            .username(user.getUsername())
-            .email(user.getEmail())
-            .enable(user.getEnabled())
-            .createAt((user.getCreatedAt() == null) ? null : user.getCreatedAt().toString())
-            .updatedAt((user.getUpdatedAt() == null) ? null :user.getUpdatedAt().toString())
-            .lastLogin((user.getLastLogin() == null) ? null :user.getLastLogin().toString())
-            .role(user.getRole())
-            .build();
+        return buildProtectionResponse(protection);
     }
 
     @Override
@@ -545,20 +524,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         if (user == null) {
             throw new UserNotFoundException("User it can't be found in the protection request");
         }
-        return ProtectionResponse.builder()
-            .ip(protection.getIpOrigin())
-            .numTrys(protection.getNumTrys())
-            .lastTry((protection.getLastTry()) == null ? null : protection.getLastTry().toString())
-            .bloquedAt((protection.getBloquedAt()) == null ? null : protection.getBloquedAt().toString())
-            .active(protection.isActive())
-            .username(user.getUsername())
-            .email(user.getEmail())
-            .enable(user.getEnabled())
-            .createAt((user.getCreatedAt() == null) ? null : user.getCreatedAt().toString())
-            .updatedAt((user.getUpdatedAt() == null) ? null :user.getUpdatedAt().toString())
-            .lastLogin((user.getLastLogin() == null) ? null :user.getLastLogin().toString())
-            .role(user.getRole())
-            .build();
+        return buildProtectionResponse(protection);
     }
 
     @Override
@@ -570,13 +536,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             () -> new UserProtectionException(INVALID_INPUT_MESSAGE)
         );
 
-        return ProtectionResponse.builder()
-            .ip(protection.getIpOrigin())
-            .numTrys(protection.getNumTrys())
-            .lastTry((protection.getLastTry()) == null ? null : protection.getLastTry().toString())
-            .bloquedAt((protection.getBloquedAt()) == null ? null : protection.getBloquedAt().toString())
-            .active(protection.isActive())
-            .build();
+        return buildProtectionResponse(protection);
     }
 
     @Override
@@ -587,25 +547,102 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         .orElseThrow(
             () -> new UserProtectionException(INVALID_INPUT_MESSAGE)
         );
+
+        return buildProtectionResponse(protection);
+    }
+
+    @Override
+    public ProtectionResponse unblockByIp(ProtectionIpRequest protectionIp) {
+        String ip = protectionIp.getIp();
+
+        if (ip == null || ip.isBlank()) {
+            throw new UserProtectionException(INVALID_INPUT_MESSAGE);
+        }
         
-        User user = protection.getUser();
-        if (user == null) {
+        unblockIp(ip);
+        
+        UserProtection protection = userProtectionRepository.findByIpOrigin(ip).orElseThrow(
+            () -> new UserProtectionException(INVALID_INPUT_MESSAGE)
+        );
+        
+        return buildProtectionResponse(protection);
+    }
+
+    @Override
+    public ProtectionResponse unblockByUsername(ProtectionUsernameRequest protectionUsername) {
+        String username = protectionUsername.getUsername();
+
+        if (username == null || username.isBlank()) {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
+        unblockIp(username);
+        
+        UserProtection protection = userProtectionRepository.findByIpOrigin(username).orElseThrow(
+            () -> new UserProtectionException(INVALID_INPUT_MESSAGE)
+        );
+        
+        return buildProtectionResponse(protection);
+    }
+
+    private ProtectionResponse buildProtectionResponse(UserProtection protection) {
+        User user = protection.getUser();
+        
         return ProtectionResponse.builder()
             .ip(protection.getIpOrigin())
             .numTrys(protection.getNumTrys())
-            .lastTry((protection.getLastTry()) == null ? null : protection.getLastTry().toString())
-            .bloquedAt((protection.getBloquedAt()) == null ? null : protection.getBloquedAt().toString())
+            .lastTry(
+                (protection.getLastTry() == null) 
+                ? null 
+                : protection.getLastTry().toString()
+            )
+            .bloquedAt(
+                (protection.getBloquedAt() == null) 
+                ? null 
+                : protection.getBloquedAt().toString()
+            )
             .active(protection.isActive())
-            .username(user.getUsername())
-            .email(user.getEmail())
-            .enable(user.getEnabled())
-            .createAt((user.getCreatedAt() == null) ? null : user.getCreatedAt().toString())
-            .updatedAt((user.getUpdatedAt() == null) ? null :user.getUpdatedAt().toString())
-            .lastLogin((user.getLastLogin() == null) ? null :user.getLastLogin().toString())
-            .role(user.getRole())
+            .username(
+                (user == null) 
+                ? null 
+                : user.getUsername()
+            )
+            .email(
+                (user == null) 
+                ? null 
+                : user.getEmail()
+            )
+            .enable(
+                (user == null) 
+                ? null 
+                : user.getEnabled()
+            )
+            .createAt(
+                (user == null) 
+                ? null 
+                : (user.getCreatedAt() == null) 
+                    ? null 
+                    : user.getCreatedAt().toString()
+            )
+            .updatedAt(
+                (user == null) 
+                ? null 
+                : (user.getUpdatedAt() == null) 
+                    ? null 
+                    : user.getUpdatedAt().toString()
+            )
+            .lastLogin(
+                (user == null) 
+                ? null 
+                : (user.getLastLogin() == null) 
+                    ? null 
+                    : user.getLastLogin().toString()
+            )
+            .role(
+                (user == null) 
+                ? null 
+                : user.getRole()
+            )
             .build();
     }
 
