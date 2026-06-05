@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.hibernate.validator.internal.constraintvalidators.bv.EmailValidator;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -72,14 +73,15 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         }
 
         String normalizedUsername = username.trim();
+        User foundUser = userService.findUser(normalizedUsername);
         Duration effectiveDuration = duration != null ? duration : BLOCK_DURATION;
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime blockedAt = now.plus(effectiveDuration);
 
         updateRedisBlock(userBlockKey(normalizedUsername), userTriesKey(normalizedUsername), effectiveDuration);
 
-        UserProtection protection = userProtectionRepository.findByUser_Username(normalizedUsername)
-            .orElseGet(() -> buildUserProtection(normalizedUsername, "User: " + normalizedUsername, now));
+        UserProtection protection = findLatestProtectionByUserKey(normalizedUsername)
+            .orElseGet(() -> buildUserProtection(foundUser.getUsername(), "User: " + foundUser.getEmail(), now));
 
         applyBlock(protection, blockedAt, false);
     }
@@ -111,7 +113,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             return blockedByRedis;
         }
 
-        return getBlockedUntil(userProtectionRepository.findByUser_Username(normalizedUsername));
+        return getBlockedUntil(findLatestProtectionByUserKey(normalizedUsername));
     }
 
     @Override
@@ -143,7 +145,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             return redisAttempts;
         }
 
-        return userProtectionRepository.findByUser_Username(normalizedUsername)
+        return findLatestProtectionByUserKey(normalizedUsername)
             .map(UserProtection::getNumTrys)
             .orElse(0);
     }
@@ -192,7 +194,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             return true;
         }
 
-        Optional<UserProtection> userProtection = userProtectionRepository.findByUser_Username(normalizedUsername);
+        Optional<UserProtection> userProtection = findLatestProtectionByUserKey(normalizedUsername);
         if (userProtection.isEmpty()) {
             return false;
         }
@@ -228,18 +230,21 @@ public class UserProtectionServiceImpl implements UserProtectionService {
 
         UserProtection protection = userProtectionRepository.findByIpOrigin(normalizedIp)
             .orElseGet(() -> {
-                return userProtectionRepository.findByUser_Username(normalizedUsername)
+                return findLatestProtectionByUserKey(normalizedUsername)
                 .orElseGet(() -> buildUserProtection(normalizedUsername, normalizedIp, now));
             });
 
         registerFailedAttemptOnProtection(protection, now);
 
-        UserProtection protectionSaved = userProtectionRepository.save(protection);
-        if (protectionSaved == null) {
-            throw new UserProtectionException("Unable to save the user faild attempt in db.");
-        }
+        userProtectionRepository.save(protection);
     }
 
+    /**
+     * Updates failed-attempt counters and block status for a protection record.
+     *
+     * @param protection protection record to mutate
+     * @param now current timestamp
+     */
     private void registerFailedAttemptOnProtection(UserProtection protection, LocalDateTime now) {
         int tries = protection.getNumTrys() + 1;
         protection.setNumTrys(tries);
@@ -273,7 +278,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
 
         if (normalizedUsername != null && !normalizedUsername.isBlank()) {
             clearProtectionInRedis(normalizedUsername, null);
-            userProtectionRepository.findByUser_Username(normalizedUsername)
+            findLatestProtectionByUserKey(normalizedUsername)
                 .ifPresent(protection -> resetProtection(protection, now));
         }
     }
@@ -296,11 +301,17 @@ public class UserProtectionServiceImpl implements UserProtectionService {
 
         if (normalizedUsername != null && !normalizedUsername.isBlank()) {
             clearProtectionInRedis(normalizedUsername, null);
-            userProtectionRepository.findByUser_Username(normalizedUsername)
+            findLatestProtectionByUserKey(normalizedUsername)
                 .ifPresent(protection -> resetProtection(protection, now));
         }
 
     }
+    /**
+     * Resets failed-attempt and block state in persistent storage.
+     *
+     * @param protection protection record to reset
+     * @param now current timestamp
+     */
 
     @Override
     public void unblockIp(String ip) {
@@ -331,7 +342,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         String normalizedUsername = username.trim();
         clearProtectionInRedis(normalizedUsername, null);
 
-        UserProtection protection = userProtectionRepository.findByUser_Username(normalizedUsername).orElse(null);
+        UserProtection protection = findLatestProtectionByUserKey(normalizedUsername).orElse(null);
         if (protection == null) {
             return;
         }
@@ -351,7 +362,13 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         userProtectionRepository.save(protection);
     }
 
-    
+    /**
+     * Applies a block to a protection record and persists it.
+     *
+     * @param protection protection record to update
+     * @param blockedAt timestamp when block expires
+     * @param countAsAttempt whether to increment failed attempts counter
+     */
     private void applyBlock(UserProtection protection, LocalDateTime blockedAt, boolean countAsAttempt) {
         if (countAsAttempt) {
             protection.setNumTrys(protection.getNumTrys() + 1);
@@ -362,6 +379,12 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         userProtectionRepository.save(protection);
     }
 
+    /**
+     * Converts a persisted protection block value to an {@link Instant}.
+     *
+     * @param protectionOptional optional protection record
+     * @return block expiration instant when still active
+     */
     private Optional<Instant> getBlockedUntil(Optional<UserProtection> protectionOptional) {
         if (protectionOptional.isEmpty()) {
             return Optional.empty();
@@ -375,6 +398,13 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         return Optional.of(blockedAt.atZone(ZoneId.systemDefault()).toInstant());
     }
 
+    /**
+     * Builds an IP-based protection record with default counters.
+     *
+     * @param ip source IP address
+     * @param now current timestamp
+     * @return initialized protection entity
+     */
     private UserProtection buildIpProtection(String ip, LocalDateTime now) {
         return UserProtection.builder()
             .ipOrigin(ip)
@@ -384,6 +414,14 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             .build();
     }
 
+    /**
+     * Builds a user-based protection record with default counters.
+     *
+     * @param username username to associate
+     * @param ip source IP address
+     * @param now current timestamp
+     * @return initialized protection entity
+     */
     private UserProtection buildUserProtection(String username, String ip, LocalDateTime now) {
         return UserProtection.builder()
             .user(userService.findUser(username))
@@ -394,6 +432,12 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             .build();
     }
 
+    /**
+     * Records failed attempts in Redis for both user and IP dimensions.
+     *
+     * @param username username used in the login attempt
+     * @param ip source IP address
+     */
     private void registerFailedAttemptInRedis(String username, String ip) {
         try {
             registerFailedAttemptByKey(ipTriesKey(ip), ipBlockKey(ip));
@@ -403,6 +447,12 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         }
     }
 
+    /**
+     * Increments attempts for a key and sets a block key when threshold is reached.
+     *
+     * @param triesKey Redis key for attempt counter
+     * @param blockKey Redis key for active block marker
+     */
     private void registerFailedAttemptByKey(String triesKey, String blockKey) {
         ValueOperations<String, String> operations = redisTemplate.opsForValue();
         Long attempts = operations.increment(triesKey);
@@ -416,6 +466,13 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         }
     }
 
+    /**
+     * Writes an administrative block to Redis and clears attempt counters.
+     *
+     * @param blockKey Redis key for active block marker
+     * @param triesKey Redis key for attempt counter
+     * @param duration block duration
+     */
     private void updateRedisBlock(String blockKey, String triesKey, Duration duration) {
         try {
             redisTemplate.opsForValue().set(blockKey, "1", duration);
@@ -425,6 +482,12 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         }
     }
 
+    /**
+     * Checks whether a block key is currently present in Redis.
+     *
+     * @param blockKey Redis key for active block marker
+     * @return {@code true} when key exists
+     */
     private boolean isBlockedInRedis(String blockKey) {
         try {
             return Boolean.TRUE.equals(redisTemplate.hasKey(blockKey));
@@ -434,6 +497,12 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         }
     }
 
+    /**
+     * Reads the block expiration from Redis TTL metadata.
+     *
+     * @param blockKey Redis key for active block marker
+     * @return expiration instant if key is active
+     */
     private Optional<Instant> getBlockedUntilFromRedis(String blockKey) {
         try {
             Long ttl = redisTemplate.getExpire(blockKey, TimeUnit.SECONDS);
@@ -447,6 +516,12 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         }
     }
 
+    /**
+     * Reads failed-attempt count from Redis.
+     *
+     * @param triesKey Redis key for attempt counter
+     * @return parsed counter value or {@code null} when unavailable
+     */
     private Integer getAttemptsFromRedis(String triesKey) {
         try {
             String value = redisTemplate.opsForValue().get(triesKey);
@@ -463,6 +538,12 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         }
     }
 
+    /**
+     * Clears Redis counters and block keys for username and/or IP.
+     *
+     * @param username username to clear, may be {@code null}
+     * @param ip IP address to clear, may be {@code null}
+     */
     private void clearProtectionInRedis(String username, String ip) {
         try {
             if (ip != null && !ip.isBlank()) {
@@ -476,18 +557,42 @@ public class UserProtectionServiceImpl implements UserProtectionService {
         }
     }
 
+    /**
+     * Builds Redis key for IP failed-attempt counter.
+     *
+     * @param ip source IP address
+     * @return Redis key
+     */
     private String ipTriesKey(String ip) {
         return IP_TRIES_KEY + ip;
     }
 
+    /**
+     * Builds Redis key for user failed-attempt counter.
+     *
+     * @param username username
+     * @return Redis key
+     */
     private String userTriesKey(String username) {
         return USER_TRIES_KEY + username;
     }
 
+    /**
+     * Builds Redis key for IP active block marker.
+     *
+     * @param ip source IP address
+     * @return Redis key
+     */
     private String ipBlockKey(String ip) {
         return IP_BLOCK_KEY + ip;
     }
 
+    /**
+     * Builds Redis key for user active block marker.
+     *
+     * @param username username
+     * @return Redis key
+     */
     private String userBlockKey(String username) {
         return USER_BLOCK_KEY + username;
     }
@@ -507,7 +612,7 @@ public class UserProtectionServiceImpl implements UserProtectionService {
 
     @Override
     public ProtectionResponse getUserProtectionByUsername(ProtectionUsernameRequest protectionUsername) {
-        UserProtection protection = userProtectionRepository.findByUser_Username(protectionUsername.getUsername())
+        UserProtection protection = findLatestProtectionByUserKey(protectionUsername.getUsername())
         .orElseThrow(() -> new UserProtectionException(INVALID_INPUT_MESSAGE));
         User user = protection.getUser();
         if (user == null) {
@@ -540,13 +645,17 @@ public class UserProtectionServiceImpl implements UserProtectionService {
     }
 
     @Override
+    @Transactional
     public ProtectionResponse blockByUsername(ProtectionUsernameRequest protectionUsername) {
-        blockUser(protectionUsername.getUsername(), Duration.ofDays(1));
-
-        UserProtection protection = userProtectionRepository.findByUser_Username(protectionUsername.getUsername())
+        
+        String keyUser = protectionUsername.getUsername();
+        
+        blockUser(keyUser, Duration.ofDays(1));
+        UserProtection protection = findLatestProtectionByUserKey(keyUser)
         .orElseThrow(
             () -> new UserProtectionException(INVALID_INPUT_MESSAGE)
         );
+
 
         return buildProtectionResponse(protection);
     }
@@ -576,15 +685,32 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             throw new UserProtectionException(INVALID_INPUT_MESSAGE);
         }
 
-        unblockIp(username);
+        unblockUser(username);
         
-        UserProtection protection = userProtectionRepository.findByIpOrigin(username).orElseThrow(
+        UserProtection protection = findLatestProtectionByUserKey(username).orElseThrow(
             () -> new UserProtectionException(INVALID_INPUT_MESSAGE)
         );
         
         return buildProtectionResponse(protection);
     }
 
+    private Optional<UserProtection> findLatestProtectionByUserKey(String userKey) {
+        if (isEmail(userKey)) {
+            return userProtectionRepository.findFirstByUser_EmailOrderByLastTryDesc(userKey);
+        }
+        return userProtectionRepository.findFirstByUser_UsernameOrderByLastTryDesc(userKey);
+    }
+
+    private boolean isEmail(String value) {
+        return new EmailValidator().isValid(value, null);
+    }
+
+    /**
+     * Builds an API response DTO from a protection entity.
+     *
+     * @param protection persisted protection entity
+     * @return mapped protection response
+     */
     private ProtectionResponse buildProtectionResponse(UserProtection protection) {
         User user = protection.getUser();
         
@@ -641,7 +767,9 @@ public class UserProtectionServiceImpl implements UserProtectionService {
             .role(
                 (user == null) 
                 ? null 
-                : user.getRole()
+                : (user.getRole() == null)
+                    ? null
+                    : user.getRole().getName().name()
             )
             .build();
     }

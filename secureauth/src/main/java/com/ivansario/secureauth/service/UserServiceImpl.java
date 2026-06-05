@@ -180,6 +180,11 @@ public class UserServiceImpl implements UserService {
         : userRepository.existsByUsername(userKey);
     }
 
+    /**
+     * Validates that the user lookup key is present.
+     *
+     * @param userKey username or email used for lookup
+     */
     private void validateUserKey(String userKey) {
         if (userKey == null || userKey.isBlank()) {
             log.warn("An attempt was made to search for a user with a null or empty key");

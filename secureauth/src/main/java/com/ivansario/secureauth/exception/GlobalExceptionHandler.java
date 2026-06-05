@@ -19,6 +19,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GlobalExceptionHandler extends Exception {
 
+	@ExceptionHandler(UserProtectionException.class)
+	public ResponseEntity<Map<String, Object>> handleProtectionNotFound(UserProtectionException ex) {
+		log.error("Protection error: {}", ex.getMessage());
+		return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
 	@ExceptionHandler(UserNotFoundException.class)
 	public ResponseEntity<Map<String, Object>> handleUserNotFound(UserNotFoundException ex) {
 		log.error("User not found: {}", ex.getMessage());

@@ -86,7 +86,7 @@ class UserProtectionServiceImplTest {
     @Test
     void shouldRegisterFailedAttemptForIpAndUser() {
         when(userProtectionRepository.findByIpOrigin(ip)).thenReturn(Optional.empty());
-        when(userProtectionRepository.findByUser_Username(username)).thenReturn(Optional.of(userProtection));
+        when(userProtectionRepository.findFirstByUser_UsernameOrderByLastTryDesc(username)).thenReturn(Optional.of(userProtection));
 
         userProtectionService.registerFailedAttempt(username, ip);
 
@@ -132,7 +132,7 @@ class UserProtectionServiceImplTest {
         userProtection.setActive(true);
 
         when(userProtectionRepository.findByIpOrigin(ip)).thenReturn(Optional.of(ipProtection));
-        when(userProtectionRepository.findByUser_Username(username)).thenReturn(Optional.of(userProtection));
+        when(userProtectionRepository.findFirstByUser_UsernameOrderByLastTryDesc(username)).thenReturn(Optional.of(userProtection));
 
         userProtectionService.registerSuccessfulLogin(username, ip);
 
@@ -161,7 +161,7 @@ class UserProtectionServiceImplTest {
 
     @Test
     void shouldReturnZeroWhenUserProtectionNotFound() {
-        when(userProtectionRepository.findByUser_Username(username)).thenReturn(Optional.empty());
+        when(userProtectionRepository.findFirstByUser_UsernameOrderByLastTryDesc(username)).thenReturn(Optional.empty());
 
         assertThat(userProtectionService.getFailedAttemptsForUser(username)).isZero();
     }

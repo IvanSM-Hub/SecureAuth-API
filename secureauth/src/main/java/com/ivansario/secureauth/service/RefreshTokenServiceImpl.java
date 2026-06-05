@@ -111,11 +111,10 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     /**
-     * Comprueba si existe al menos un refresh token para el usuario.
+     * Checks whether the user currently has at least one refresh token.
      *
-     * @param user usuario a verificar
-     * @return {@code true} si existe al menos un token, {@code false} en caso
-     *         contrario
+     * @param user user to verify
+     * @return {@code true} when a token exists; otherwise {@code false}
      */
     @Override
     public boolean existsRefreshTokenByUser(User user) {

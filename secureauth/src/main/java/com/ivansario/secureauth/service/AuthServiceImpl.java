@@ -2,6 +2,7 @@ package com.ivansario.secureauth.service;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.validator.internal.constraintvalidators.bv.EmailValidator;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -59,10 +60,13 @@ public class AuthServiceImpl implements AuthService {
     private final UserSessionService userSessionService;
     private final UserProtectionService userProtectionService;
 
+    private String ADMIN_EMAIL = "admin@admin.com";
+    private String ADMIN_USERNAME = "admin";
+
     
     @Override
     public AuthResponse initialAdminLogin(InitialAdminLoginRequest request, String ipAddress, String userAgent) {
-        if (!"admin@admin.com".equalsIgnoreCase(request.getUsername()) || !"admin".equalsIgnoreCase(request.getUsername())) {
+        if (validateAdminUsername(request.getUsername())) {
             throw new UserProtectionException("The user may be admin");
         }
         LoginRequest loginRequest = LoginRequest.builder()
@@ -146,10 +150,10 @@ public class AuthServiceImpl implements AuthService {
 
         User user = foundRefreshToken.getUser();
 
-        // Revocar refresh token
+        // Revoke refresh token.
         refreshTokenService.revokeToken(foundRefreshToken);
 
-        // Revocar sesión del usuario
+        // Revoke active user session.
         userSessionService.revokeSession(user);
 
         log.info("User {} logged out successfully", user.getUsername());
@@ -258,8 +262,26 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Realiza la autenticación usando el {@code AuthenticationManager}.
-     * Intenta autenticar con el valor proporcionado como username o email.
+     * Checks whether the provided credential matches the reserved admin identity.
+     *
+     * @param username username or email provided at login
+     * @return {@code true} when the value matches the bootstrap admin account
+     */
+    private boolean validateAdminUsername(String username) {
+        EmailValidator emailValidator = new EmailValidator();
+        boolean isvalid = (emailValidator.isValid(username, null)) 
+            ? ADMIN_EMAIL.equals(username) 
+            : ADMIN_USERNAME.equalsIgnoreCase(username); 
+        return !isvalid;
+    }
+
+    /**
+     * Authenticates credentials using the configured {@code AuthenticationManager}.
+     * It accepts either username or email in the same input field.
+     *
+     * @param username username or email used for authentication
+     * @param password raw password
+     * @return authenticated security context
      */
     private Authentication authenticate(String username, String password) {
         String normalizedUsername = username == null ? null : username.trim();
@@ -268,8 +290,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Valida que una entidad creada no sea nula; lanza RuntimeException en caso
-     * contrario.
+     * Validates that a newly persisted entity is not null.
+     *
+     * @param entity persisted entity reference
+     * @param entityName entity label for error messages
      */
     private void validateCreatedEntity(Object entity, String entityName) {
         if (entity == null) {
@@ -278,7 +302,9 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Valida la existencia y estado del refresh token.
+     * Validates refresh token existence and status.
+     *
+     * @param refreshToken token instance to validate
      */
     private void validateRefreshToken(RefreshToken refreshToken) {
         if (refreshToken == null) {
@@ -293,7 +319,12 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Crea o actualiza el refresh token y sincroniza la sesión del usuario.
+     * Creates or rotates a refresh token and keeps user session metadata in sync.
+     *
+     * @param user token owner
+     * @param ipAddress source IP address
+     * @param userAgent client user-agent
+     * @return active refresh token for the user
      */
     private RefreshToken createOrUpdateRefreshTokenAndSession(User user, String ipAddress, String userAgent) {
         RefreshToken refreshedToken;
@@ -309,7 +340,12 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Crea o actualiza la sesión de usuario con el token y metadatos actuales.
+     * Creates or updates the persisted user session with current token and metadata.
+     *
+     * @param user session owner
+     * @param refreshToken active refresh token
+     * @param ipAddress source IP address
+     * @param userAgent client user-agent
      */
     private void upsertUserSession(User user, RefreshToken refreshToken, String ipAddress, String userAgent) {
         UserSession userSession = userSessionService.findByUser(user);
@@ -325,7 +361,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     /**
-     * Resuelve los detalles de usuario necesarios para generar tokens.
+     * Resolves Spring Security user details required to generate JWT tokens.
+     *
+     * @param user authenticated domain user
+     * @return user details for token generation
      */
     private UserDetails resolveUserDetails(User user) {
         try {

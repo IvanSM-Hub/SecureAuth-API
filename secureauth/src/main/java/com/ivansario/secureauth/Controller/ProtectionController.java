@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -126,7 +127,7 @@ public class ProtectionController {
         return ResponseEntity.ok(protectionService.getUserProtectionByIp(request));
     }
 
-    @GetMapping("/block-user")
+    @PostMapping("/block-user")
     @PreAuthorize(value = "hasRole('ADMIN')")
     @Operation(
         summary = "Block user by username",
@@ -155,7 +156,7 @@ public class ProtectionController {
         return ResponseEntity.ok(protectionService.blockByUsername(request));
     }
 
-    @GetMapping("/block-ip")
+    @PostMapping("/block-ip")
     @PreAuthorize(value = "hasRole('ADMIN')")
     @Operation(
         summary = "Block by IP",
@@ -184,7 +185,7 @@ public class ProtectionController {
         return ResponseEntity.ok(protectionService.blockByIp(request));
     }
 
-    @GetMapping("/unblock-user")
+    @PostMapping("/unblock-user")
     @PreAuthorize(value = "hasRole('ADMIN')")
     @Operation(
         summary = "Block user by username",
@@ -213,7 +214,7 @@ public class ProtectionController {
         return ResponseEntity.ok(protectionService.unblockByUsername(request));
     }
 
-    @GetMapping("/unblock-ip")
+    @PostMapping("/unblock-ip")
     @PreAuthorize(value = "hasRole('ADMIN')")
     @Operation(
         summary = "Block by IP",

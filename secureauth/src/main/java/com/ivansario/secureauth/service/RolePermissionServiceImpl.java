@@ -9,9 +9,9 @@ import com.ivansario.secureauth.entity.RolePermission;
 import com.ivansario.secureauth.service.interfaces.RolePermissionService;
 
 /**
- * Implementación del servicio de relaciones entre roles y permisos.
+ * Service implementation for role-permission relationships.
  *
- * Actualmente los métodos están marcados como no implementados y lanzan
+ * All methods are currently placeholders and throw
  * {@link UnsupportedOperationException}.
  */
 @Service

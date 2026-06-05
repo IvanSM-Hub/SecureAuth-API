@@ -173,8 +173,22 @@ public interface UserProtectionService {
 	 */
 	ProtectionResponse blockByIp(ProtectionIpRequest protectionIp);
 
+	/**
+	 * Removes an administrative block from a user identified by username and
+	 * returns updated protection details.
+	 *
+	 * @param protectionUsername request payload containing the username to unblock
+	 * @return updated protection details for the unblocked user
+	 */
 	ProtectionResponse unblockByUsername(ProtectionUsernameRequest protectionUsername);
 	
+	/**
+	 * Removes an administrative block from an IP address and returns updated
+	 * protection details.
+	 *
+	 * @param protectionIp request payload containing the IP address to unblock
+	 * @return updated protection details for the unblocked IP address
+	 */
 	ProtectionResponse unblockByIp(ProtectionIpRequest protectionIp);
 
 }

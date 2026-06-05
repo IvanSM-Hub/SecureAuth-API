@@ -1,7 +1,5 @@
 package com.ivansario.secureauth.dto.protect;
 
-import com.ivansario.secureauth.entity.Role;
-
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,7 +37,7 @@ public class ProtectionResponse {
     private String updatedAt;
     @Schema(description = "Date and time of the last successful login", example = "2026-06-02T08:15:00")
     private String lastLogin;
-    @Schema(description = "Role assigned to the user")
-    private Role role;
+    @Schema(description = "Role assigned to the user", example = "ROLE_ADMIN")
+    private String role;
 
 }

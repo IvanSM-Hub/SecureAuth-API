@@ -15,9 +15,9 @@ import com.ivansario.secureauth.service.interfaces.UserSessionService;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Servicio para gestión de sesiones de usuario.
+ * Service for user session management.
  *
- * Permite crear, actualizar, buscar y revocar sesiones asociadas a usuarios.
+ * Supports creation, update, lookup, and revocation of user sessions.
  */
 @Service
 @RequiredArgsConstructor
@@ -48,10 +48,10 @@ public class UserSessionServiceImpl implements UserSessionService {
     }
 
     /**
-     * Actualiza la sesión en persistencia.
+     * Updates a persisted user session.
      *
-     * @param session sesión a actualizar
-     * @return sesión actualizada
+     * @param session session to update
+     * @return updated session
      */
     @Override
     public UserSession update(UserSession session) {
@@ -64,10 +64,10 @@ public class UserSessionServiceImpl implements UserSessionService {
     }
 
     /**
-     * Revoca la última sesión activa del usuario (si existe).
+     * Revokes the active session for a user when present.
      *
-     * @param user usuario cuya sesión será revocada
-     * @return {@code true} si la sesión fue revocada, {@code false} si no había sesión
+     * @param user user whose session will be revoked
+     * @return {@code true} when a session was revoked; otherwise {@code false}
      */
     @Override
     public boolean revokeSession(User user) {
