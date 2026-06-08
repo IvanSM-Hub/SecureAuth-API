@@ -1,0 +1,51 @@
+name: Docker SecureAuth-api CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Git Semantic Version
+      uses: PaulHatch/semantic-version@v6.0.2
+      with:
+        major_pattern: "major:"
+        minor_pattern: "feat:"
+        format: "${major}.${minor}.${patch}-prereleases${increment}"
+      id: version
+      
+    - name: Docker login
+      env: 
+        DOCKERHUB_USERNAME: ${{secrets.DOCKERHUB_USERNAME}}
+        DOCKERHUB_TOKEN: ${{secrets.DOCKERHUB_TOKEN}}
+      run: |
+        docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN
+
+    - name: Build Docker Image
+      env:
+        NEW_VERSION: ${{steps.version.outputs.version}}
+        DOCKERHUB_USERNAME: ${{secrets.DOCKERHUB_USERNAME}}
+        DOCKERHUB_PROJECT: ${{secrets.DOCKERHUB_PROJECT}}
+      run: |
+        docker buildx build --platform linux/amd64,linux/arm64 -t $DOCKERHUB_USERNAME/$DOCKERHUB_PROJECT:$NEW_VERSION .
+        docker buildx build --platform linux/amd64,linux/arm64 -t $DOCKERHUB_USERNAME/$DOCKERHUB_PROJECT:latest .
+
+    - name: Push Docker Image
+      env:
+        NEW_VERSION: ${{steps.version.outputs.version}}
+        DOCKERHUB_USERNAME: ${{secrets.DOCKERHUB_USERNAME}}
+        DOCKERHUB_PROJECT: ${{secrets.DOCKERHUB_PROJECT}}
+      run: |
+        docker push $DOCKERHUB_USERNAME/$DOCKERHUB_PROJECT:$NEW_VERSION
+        docker push $DOCKERHUB_USERNAME/$DOCKERHUB_PROJECT:latest
