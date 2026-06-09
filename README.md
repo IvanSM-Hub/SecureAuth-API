@@ -203,3 +203,6 @@ Current status observed in this assessment:
 3. Version the contract and freeze a first release (`v1`).
 4. Document an integration guide for clients (flows, errors, refresh, expirations).
 5. Publish a changelog and compatibility policy.
+
+## Web Service live:
+https://secureauth-api-gk1a.onrender.com/swagger-ui/index.html/
